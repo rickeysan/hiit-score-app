@@ -1,0 +1,98 @@
+.fireworks-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  animation: explode 2s ease-out forwards;
+  box-shadow: 0 0 10px currentColor;
+}
+
+@keyframes explode {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(
+      calc(var(--vx) * 100px),
+      calc(var(--vy) * 100px + 200px)
+    ) scale(0);
+    opacity: 0;
+  }
+}
+
+.celebration-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 3rem;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 
+    0 0 10px rgba(255, 255, 255, 0.8),
+    0 0 20px rgba(255, 215, 0, 0.6),
+    0 0 30px rgba(255, 215, 0, 0.4);
+  animation: celebrationPulse 1s ease-in-out infinite;
+  white-space: nowrap;
+  z-index: 10000;
+}
+
+@keyframes celebrationPulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+  .celebration-text {
+    font-size: 2rem;
+  }
+  
+  @keyframes explode {
+    0% {
+      transform: translate(0, 0) scale(1);
+      opacity: 1;
+    }
+    100% {
+      transform: translate(
+        calc(var(--vx) * 60px),
+        calc(var(--vy) * 60px + 150px)
+      ) scale(0);
+      opacity: 0;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .celebration-text {
+    font-size: 1.5rem;
+  }
+  
+  @keyframes explode {
+    0% {
+      transform: translate(0, 0) scale(1);
+      opacity: 1;
+    }
+    100% {
+      transform: translate(
+        calc(var(--vx) * 40px),
+        calc(var(--vy) * 40px + 100px)
+      ) scale(0);
+      opacity: 0;
+    }
+  }
+}

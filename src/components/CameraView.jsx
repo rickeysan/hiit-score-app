@@ -1,0 +1,392 @@
+import React, { useRef, useEffect, useState } from 'react';
+import * as tf from '@tensorflow/tfjs';
+import * as posedetection from '@tensorflow-models/pose-detection';
+
+export default function CameraView({ onScoreUpdate, isActive }) {
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [error, setError] = useState(null);
+  const isMountedRef = useRef(true);
+  const onScoreUpdateRef = useRef(onScoreUpdate);
+  const isActiveRef = useRef(isActive);
+
+  // onScoreUpdateとisActiveを最新の状態に保つ
+  useEffect(() => {
+    onScoreUpdateRef.current = onScoreUpdate;
+  }, [onScoreUpdate]);
+
+  useEffect(() => {
+    isActiveRef.current = isActive;
+    console.log('🔄 isActiveが変更されました:', isActive);
+  }, [isActive]);
+
+  useEffect(() => {
+    isMountedRef.current = true; // マウント時にtrueに設定
+    let detector;
+    let animationFrameId;
+    let prevPoses = null;
+    let stream = null;
+
+    const setupCamera = async () => {
+      try {
+        console.log('🎥 カメラのセットアップを開始...');
+        
+        // カメラが利用可能かチェック
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          console.error('❌ カメラAPIが利用できません');
+          if (isMountedRef.current) {
+            setError('お使いのブラウザはカメラに対応していません。Chrome、Firefox、Safariなどの最新ブラウザをお使いください。');
+          }
+          return null;
+        }
+
+        const video = videoRef.current;
+        if (!video) {
+          console.error('❌ video要素が見つかりません');
+          return null;
+        }
+        if (!isMountedRef.current) {
+          console.log('⚠️ コンポーネントがアンマウントされています');
+          return null;
+        }
+
+        console.log('📹 カメラストリームを要求中...');
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { 
+            width: 640, 
+            height: 480,
+            facingMode: 'user' // フロントカメラを使用
+          } 
+        });
+        console.log('✅ カメラストリーム取得成功');
+
+        if (!isMountedRef.current) {
+          console.log('⚠️ ストリーム取得後、コンポーネントがアンマウントされました');
+          stream.getTracks().forEach(track => track.stop());
+          return null;
+        }
+
+        video.srcObject = stream;
+        console.log('📺 ビデオソースを設定しました');
+        
+        // video要素が存在し、マウントされている場合のみ再生
+        if (video && isMountedRef.current) {
+          console.log('▶️ ビデオ再生を開始...');
+          await video.play();
+          console.log('✅ ビデオ再生成功');
+          
+          if (isMountedRef.current) {
+            setIsInitialized(true);
+            setError(null);
+            console.log('✅ カメラ初期化完了');
+          }
+        }
+
+        return stream;
+      } catch (err) {
+        console.error('カメラの取得に失敗しました:', err);
+        
+        if (!isMountedRef.current) return null;
+        
+        // エラーの種類に応じたメッセージ
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          setError('カメラへのアクセスが拒否されました。ブラウザのアドレスバーのカメラアイコンをクリックして許可してください。');
+        } else if (err.name === 'NotFoundError') {
+          setError('カメラが見つかりませんでした。カメラが接続されているか確認してください。');
+        } else if (err.name === 'NotReadableError') {
+          setError('カメラが他のアプリケーションで使用中です。他のアプリを閉じてからもう一度お試しください。');
+        } else if (err.name === 'AbortError') {
+          // AbortErrorは開発時のホットリロードで頻繁に発生するため無視
+          console.warn('⚠️ カメラ初期化が中断されました（開発モードでは正常）');
+        } else {
+          // play()エラーは無視（コンポーネントのアンマウント時によく発生）
+          if (!err.message.includes('play()') && !err.message.includes('interrupted')) {
+            setError(`カメラエラー: ${err.message}。ページを再読み込みしてください。`);
+          } else {
+            console.warn('⚠️ ビデオ再生が中断されました（開発モードでは正常）');
+          }
+        }
+        return null;
+      }
+    };
+
+    const calculateMovementScore = (currentPoses, previousPoses) => {
+      if (!previousPoses || previousPoses.length === 0) return 0;
+      
+      let totalMovement = 0;
+      
+      // MoveNetの17個の関節点から主要な部位を選択
+      // 0:鼻, 1:左目, 2:右目, 3:左耳, 4:右耳,
+      // 5:左肩, 6:右肩, 7:左肘, 8:右肘, 9:左手首, 10:右手首,
+      // 11:左腰, 12:右腰, 13:左膝, 14:右膝, 15:左足首, 16:右足首
+      const keyJoints = [
+        9, 10,   // 手首（重要）
+        7, 8,    // 肘
+        5, 6,    // 肩
+        13, 14,  // 膝
+        15, 16   // 足首（重要）
+      ];
+      
+      currentPoses.forEach((pose, poseIndex) => {
+        if (previousPoses[poseIndex]) {
+          const currentKeypoints = pose.keypoints;
+          const prevKeypoints = previousPoses[poseIndex].keypoints;
+          
+          keyJoints.forEach(jointIndex => {
+            const currentJoint = currentKeypoints[jointIndex];
+            const prevJoint = prevKeypoints[jointIndex];
+            
+            // 関節点が存在し、信頼度が十分高い場合のみ計算
+            if (currentJoint && prevJoint && 
+                currentJoint.score > 0.3 && prevJoint.score > 0.3) {
+              const dx = currentJoint.x - prevJoint.x;
+              const dy = currentJoint.y - prevJoint.y;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+              
+              // 移動量に重み付け（手首と足首を重視）
+              let weight = 1;
+              if (jointIndex === 9 || jointIndex === 10) weight = 1.5;  // 手首
+              if (jointIndex === 15 || jointIndex === 16) weight = 1.3; // 足首
+              
+              totalMovement += distance * weight;
+            }
+          });
+        }
+      });
+      
+      return totalMovement;
+    };
+
+    const drawSkeleton = (poses) => {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      const video = videoRef.current;
+      
+      if (!canvas || !ctx || !video) return;
+      
+      // キャンバスサイズを動画に合わせる
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      // キャンバスをクリア
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      poses.forEach(pose => {
+        const keypoints = pose.keypoints;
+        
+        // 関節点を描画
+        keypoints.forEach(keypoint => {
+          if (keypoint.score > 0.3) { // 信頼度が30%以上の場合のみ描画
+            ctx.fillStyle = '#00FF00';
+            ctx.beginPath();
+            ctx.arc(keypoint.x, keypoint.y, 3, 0, 2 * Math.PI);
+            ctx.fill();
+          }
+        });
+        
+        // 骨格線を描画
+        // MoveNetの17個の関節点:
+        // 0:鼻, 1:左目, 2:右目, 3:左耳, 4:右耳,
+        // 5:左肩, 6:右肩, 7:左肘, 8:右肘, 9:左手首, 10:右手首,
+        // 11:左腰, 12:右腰, 13:左膝, 14:右膝, 15:左足首, 16:右足首
+        const connections = [
+          [0, 1], [0, 2], [1, 3], [2, 4], // 顔
+          [5, 6], [5, 7], [6, 8], [7, 9], [8, 10], // 上半身
+          [5, 11], [6, 12], [11, 12], // 肩と腰
+          [11, 13], [12, 14], [13, 15], [14, 16] // 脚
+        ];
+        
+        connections.forEach(([startIdx, endIdx]) => {
+          const startPoint = keypoints[startIdx];
+          const endPoint = keypoints[endIdx];
+          
+          // 関節点が存在し、信頼度が十分高い場合のみ描画
+          if (startPoint && endPoint && 
+              startPoint.score > 0.3 && endPoint.score > 0.3) {
+            ctx.strokeStyle = '#00FF00';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(startPoint.x, startPoint.y);
+            ctx.lineTo(endPoint.x, endPoint.y);
+            ctx.stroke();
+          }
+        });
+      });
+    };
+
+    let frameCount = 0;
+    const detectPose = async () => {
+      if (!detector || !videoRef.current) {
+        animationFrameId = requestAnimationFrame(detectPose);
+        return;
+      }
+
+      try {
+        const poses = await detector.estimatePoses(videoRef.current);
+        
+        // 30フレームに1回ログ出力（約1秒に1回）
+        frameCount++;
+        if (frameCount % 30 === 0) {
+          console.log('📊 ポーズ検出:', {
+            検出された人数: poses.length,
+            isActive: isActiveRef.current,
+            prevPoses: prevPoses ? 'あり' : 'なし'
+          });
+          
+          if (poses.length > 0) {
+            console.log('関節点数:', poses[0].keypoints.length);
+          }
+        }
+        
+        // 骨格を描画
+        drawSkeleton(poses);
+        
+        // スコア計算（isActiveがtrueの時のみ）
+        if (prevPoses && poses.length > 0 && isActiveRef.current) {
+          const movementScore = calculateMovementScore(poses, prevPoses);
+          
+          if (frameCount % 30 === 0 && movementScore > 0) {
+            console.log('💯 スコア加算:', movementScore.toFixed(2));
+          }
+          
+          onScoreUpdateRef.current(prev => prev + movementScore * 0.01); // スケーリング
+        }
+        
+        prevPoses = poses;
+      } catch (err) {
+        console.error('ポーズ検出エラー:', err);
+      }
+      
+      animationFrameId = requestAnimationFrame(detectPose);
+    };
+
+    const initializeTensorFlow = async () => {
+      try {
+        console.log('🤖 TensorFlow.jsを初期化中...');
+        if (!isMountedRef.current) return;
+        
+        await tf.ready();
+        console.log('✅ TensorFlow.js準備完了');
+        if (!isMountedRef.current) return;
+        
+        console.log('🏃 MoveNetモデルを読み込み中...');
+        detector = await posedetection.createDetector(
+          posedetection.SupportedModels.MoveNet,
+          {
+            modelType: posedetection.movenet.modelType.SINGLEPOSE_LIGHTNING
+          }
+        );
+        console.log('✅ TensorFlow.jsとMoveNetが初期化されました');
+      } catch (err) {
+        console.error('❌ TensorFlow.jsの初期化に失敗しました:', err);
+        if (isMountedRef.current) {
+          setError('AIモデルの読み込みに失敗しました。ページを再読み込みしてください。');
+        }
+      }
+    };
+
+    // 初期化
+    const init = async () => {
+      console.log('🚀 アプリケーション初期化開始');
+      stream = await setupCamera();
+      console.log('カメラセットアップ完了、stream:', stream ? 'あり' : 'なし');
+      
+      if (isMountedRef.current && stream) {
+        await initializeTensorFlow();
+        if (isMountedRef.current) {
+          console.log('🎬 ポーズ検出を開始します');
+          detectPose();
+        }
+      } else {
+        console.log('⚠️ 初期化を中断します（マウント状態またはストリームの問題）');
+      }
+    };
+
+    init();
+
+    return () => {
+      console.log('🧹 クリーンアップ開始');
+      isMountedRef.current = false;
+      
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        console.log('✅ アニメーションフレームをキャンセルしました');
+      }
+      
+      // ビデオストリームを停止
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        console.log('✅ ストリームを停止しました');
+      }
+      
+      // videoRef経由でもストリームを停止（念のため）
+      if (videoRef.current && videoRef.current.srcObject) {
+        const tracks = videoRef.current.srcObject.getTracks();
+        tracks.forEach(track => track.stop());
+        videoRef.current.srcObject = null;
+        console.log('✅ ビデオソースをクリアしました');
+      }
+    };
+  }, []); // 空の依存配列で初回マウント時のみ実行
+
+  if (error) {
+    return (
+      <div className="camera-error">
+        <div className="error-icon">⚠️</div>
+        <h3>カメラのアクセスエラー</h3>
+        <p className="error-message">{error}</p>
+        
+        <div className="error-instructions">
+          <h4>📋 解決方法：</h4>
+          <ol>
+            <li>ブラウザのアドレスバー左側にある<strong>🔒 鍵アイコン</strong>または<strong>🎥 カメラアイコン</strong>をクリック</li>
+            <li>「カメラ」の設定を<strong>「許可」</strong>に変更</li>
+            <li>下のボタンをクリックしてページを再読み込み</li>
+          </ol>
+          
+          <div className="browser-help">
+            <p><strong>それでも解決しない場合：</strong></p>
+            <ul>
+              <li>HTTPSで接続されているか確認（localhostは許可されています）</li>
+              <li>他のアプリがカメラを使用していないか確認</li>
+              <li>ブラウザを再起動してみてください</li>
+            </ul>
+          </div>
+        </div>
+        
+        <button className="error-reload-btn" onClick={() => window.location.reload()}>
+          🔄 ページを再読み込み
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="camera-container">
+      <div className="video-wrapper">
+        <video 
+          ref={videoRef} 
+          className="camera-video"
+          autoPlay 
+          playsInline 
+          muted
+        />
+        <canvas 
+          ref={canvasRef} 
+          className="pose-canvas"
+        />
+      </div>
+      
+      <div className="camera-status">
+        {!isInitialized ? (
+          <p>カメラを初期化中...</p>
+        ) : !isActive ? (
+          <p>セッション開始ボタンを押して運動を開始してください</p>
+        ) : (
+          <p>🎯 運動を検出中...</p>
+        )}
+      </div>
+    </div>
+  );
+}
