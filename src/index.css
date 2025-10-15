@@ -1,15 +1,12 @@
-/* リセットCSS */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  line-height: 1.6;
-  color: #333;
-  background-color: #f4f4f4;
+/* カスタムスタイル */
+@layer base {
+  body {
+    @apply font-sans;
+  }
 }
 
 /* スクロールバーのスタイリング */
@@ -31,13 +28,6 @@ body {
   background: rgba(255, 255, 255, 0.5);
 }
 
-/* フォーカススタイル */
-button:focus,
-input:focus {
-  outline: 2px solid rgba(255, 255, 255, 0.5);
-  outline-offset: 2px;
-}
-
 /* アニメーション */
 @keyframes fadeIn {
   from {
@@ -54,54 +44,185 @@ input:focus {
   animation: fadeIn 0.5s ease-out;
 }
 
-/* ユーティリティクラス */
-.text-center {
-  text-align: center;
-}
-
-.mb-1 {
-  margin-bottom: 0.5rem;
-}
-
-.mb-2 {
-  margin-bottom: 1rem;
-}
-
-.mb-3 {
-  margin-bottom: 1.5rem;
-}
-
-.mt-1 {
-  margin-top: 0.5rem;
-}
-
-.mt-2 {
-  margin-top: 1rem;
-}
-
-.mt-3 {
-  margin-top: 1.5rem;
-}
-
-/* レスポンシブ画像 */
-img {
-  max-width: 100%;
-  height: auto;
-}
-
-/* アクセシビリティ */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px rgba(249, 115, 22, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0);
   }
 }
 
-/* ダークモード対応（将来の拡張用） */
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: #1a1a1a;
-    color: #ffffff;
+.pulse-dot {
+  animation: pulse 1.5s infinite;
+}
+
+/* 走るアニメーション */
+@keyframes running {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-5px) rotate(-5deg);
+  }
+  50% {
+    transform: translateY(0) rotate(0deg);
+  }
+  75% {
+    transform: translateY(-3px) rotate(5deg);
   }
 }
+
+.runner-emoji {
+  display: inline-block;
+  animation: running 0.6s ease-in-out infinite;
+}
+
+/* 棒人間のアニメーション */
+.stick-figure {
+  display: inline-block;
+  width: 40px;
+  height: 50px;
+  position: relative;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+.stick-figure .head {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #f97316;
+  position: absolute;
+  top: 0;
+  left: 14px;
+  animation: bob 0.6s ease-in-out infinite;
+}
+
+.stick-figure .body {
+  width: 2px;
+  height: 18px;
+  background: #f97316;
+  position: absolute;
+  top: 12px;
+  left: 19px;
+}
+
+.stick-figure .arm-left {
+  width: 2px;
+  height: 14px;
+  background: #f97316;
+  position: absolute;
+  top: 14px;
+  left: 12px;
+  transform-origin: top center;
+  animation: arm-left-swing 0.6s ease-in-out infinite;
+}
+
+.stick-figure .arm-right {
+  width: 2px;
+  height: 14px;
+  background: #f97316;
+  position: absolute;
+  top: 14px;
+  left: 26px;
+  transform-origin: top center;
+  animation: arm-right-swing 0.6s ease-in-out infinite;
+}
+
+.stick-figure .leg-left {
+  width: 2px;
+  height: 18px;
+  background: #f97316;
+  position: absolute;
+  top: 30px;
+  left: 16px;
+  transform-origin: top center;
+  animation: leg-left-swing 0.6s ease-in-out infinite;
+}
+
+.stick-figure .leg-right {
+  width: 2px;
+  height: 18px;
+  background: #f97316;
+  position: absolute;
+  top: 30px;
+  left: 22px;
+  transform-origin: top center;
+  animation: leg-right-swing 0.6s ease-in-out infinite;
+}
+
+/* 頭の上下運動 */
+@keyframes bob {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+/* 左腕の振り */
+@keyframes arm-left-swing {
+  0%, 100% {
+    transform: rotate(-30deg);
+  }
+  50% {
+    transform: rotate(30deg);
+  }
+}
+
+/* 右腕の振り */
+@keyframes arm-right-swing {
+  0%, 100% {
+    transform: rotate(30deg);
+  }
+  50% {
+    transform: rotate(-30deg);
+  }
+}
+
+/* 左脚の振り */
+@keyframes leg-left-swing {
+  0%, 100% {
+    transform: rotate(30deg);
+  }
+  50% {
+    transform: rotate(-30deg);
+  }
+}
+
+/* 右脚の振り */
+@keyframes leg-right-swing {
+  0%, 100% {
+    transform: rotate(-30deg);
+  }
+  50% {
+    transform: rotate(30deg);
+  }
+}
+
+/* フェードインアニメーション */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out forwards;
+}
+
+
+

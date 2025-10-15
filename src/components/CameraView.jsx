@@ -332,59 +332,61 @@ export default function CameraView({ onScoreUpdate, isActive }) {
 
   if (error) {
     return (
-      <div className="camera-error">
-        <div className="error-icon">⚠️</div>
-        <h3>カメラのアクセスエラー</h3>
-        <p className="error-message">{error}</p>
+      <div className="text-left p-8 bg-white/95 rounded-2xl border-2 border-red-500 shadow-xl text-gray-800 max-w-2xl mx-auto">
+        <h3 className="text-red-500 mb-4 text-center text-2xl font-bold">カメラのアクセスエラー</h3>
+        <p className="bg-red-50 p-4 rounded-lg mb-6 border-l-4 border-red-500 font-medium">{error}</p>
         
-        <div className="error-instructions">
-          <h4>📋 解決方法：</h4>
-          <ol>
-            <li>ブラウザのアドレスバー左側にある<strong>🔒 鍵アイコン</strong>または<strong>🎥 カメラアイコン</strong>をクリック</li>
-            <li>「カメラ」の設定を<strong>「許可」</strong>に変更</li>
-            <li>下のボタンをクリックしてページを再読み込み</li>
+        <div className="bg-green-50 p-6 rounded-xl mb-6 border border-green-200">
+          <h4 className="text-green-600 mb-4 text-xl font-bold">解決方法：</h4>
+          <ol className="pl-6 mb-4 list-decimal">
+            <li className="mb-3 leading-relaxed">ブラウザのアドレスバー左側にある<strong className="text-red-500 font-semibold">鍵アイコン</strong>または<strong className="text-red-500 font-semibold">カメラアイコン</strong>をクリック</li>
+            <li className="mb-3 leading-relaxed">「カメラ」の設定を<strong className="text-red-500 font-semibold">「許可」</strong>に変更</li>
+            <li className="mb-3 leading-relaxed">下のボタンをクリックしてページを再読み込み</li>
           </ol>
           
-          <div className="browser-help">
-            <p><strong>それでも解決しない場合：</strong></p>
-            <ul>
-              <li>HTTPSで接続されているか確認（localhostは許可されています）</li>
-              <li>他のアプリがカメラを使用していないか確認</li>
-              <li>ブラウザを再起動してみてください</li>
+          <div className="mt-4 pt-4 border-t border-green-200">
+            <p className="mb-2 text-gray-700"><strong>それでも解決しない場合：</strong></p>
+            <ul className="pl-6 list-disc">
+              <li className="mb-2 text-gray-600 leading-relaxed">HTTPSで接続されているか確認（localhostは許可されています）</li>
+              <li className="mb-2 text-gray-600 leading-relaxed">他のアプリがカメラを使用していないか確認</li>
+              <li className="mb-2 text-gray-600 leading-relaxed">ブラウザを再起動してみてください</li>
             </ul>
           </div>
         </div>
         
-        <button className="error-reload-btn" onClick={() => window.location.reload()}>
-          🔄 ページを再読み込み
+        <button 
+          className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-none py-4 px-8 rounded-full text-lg font-bold cursor-pointer w-full transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+          onClick={() => window.location.reload()}
+        >
+          ページを再読み込み
         </button>
       </div>
     );
   }
 
   return (
-    <div className="camera-container">
-      <div className="video-wrapper">
+    <div className="text-center">
+      <div className="relative inline-block rounded-2xl overflow-hidden shadow-2xl">
         <video 
           ref={videoRef} 
-          className="camera-video"
+          className="w-full max-w-2xl h-auto block scale-x-[-1]"
           autoPlay 
           playsInline 
           muted
         />
         <canvas 
           ref={canvasRef} 
-          className="pose-canvas"
+          className="absolute top-0 left-0 w-full h-full pointer-events-none"
         />
       </div>
       
-      <div className="camera-status">
+      <div className="mt-4 text-lg opacity-90">
         {!isInitialized ? (
           <p>カメラを初期化中...</p>
         ) : !isActive ? (
           <p>セッション開始ボタンを押して運動を開始してください</p>
         ) : (
-          <p>🎯 運動を検出中...</p>
+          <p>運動を検出中...</p>
         )}
       </div>
     </div>
