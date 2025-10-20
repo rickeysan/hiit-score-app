@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import CameraView from './components/CameraView'
 import SessionHistory from './components/SessionHistory'
 import Fireworks from './components/Fireworks'
+import { Analytics } from '@vercel/analytics/react'
 
 function App() {
   const [currentScore, setCurrentScore] = useState(0)
@@ -87,6 +88,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-orange-100">
+      <Analytics />
       <header className="text-center py-8 px-4 bg-white shadow-md border-b-4 border-orange-400">
         <h1 className="flex items-center justify-center gap-4 text-4xl md:text-5xl font-bold mb-2">
           <video 
