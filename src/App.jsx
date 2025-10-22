@@ -11,6 +11,7 @@ function App() {
   const [isSessionActive, setIsSessionActive] = useState(false)
   const [showFireworks, setShowFireworks] = useState(false)
   const [showCongratulations, setShowCongratulations] = useState(false)
+  const [hasCameraError, setHasCameraError] = useState(false)
   const lastMilestoneRef = useRef(0)
   const congratulationsShownRef = useRef(false)
 
@@ -89,8 +90,8 @@ function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-orange-100">
       <Analytics />
-      <header className="text-center py-8 px-4 bg-white shadow-md border-b-4 border-orange-400">
-        <h1 className="flex items-center justify-center gap-4 text-4xl md:text-5xl font-bold mb-2">
+      <header className="text-center py-2 px-4 bg-white shadow-md border-b-4 border-orange-400">
+        <h1 className="flex items-center justify-center gap-4 text-4xl md:text-5xl font-bold mb-0">
           <video 
             src="/work.mp4" 
             autoPlay 
@@ -102,10 +103,10 @@ function App() {
             className="w-16 h-16 md:w-20 md:h-20 object-contain"
             style={{ imageRendering: 'crisp-edges' }}
           />
-          <span className="bg-gradient-to-r from-orange-500 to-yellow-500 bg-clip-text text-transparent">HIITスコアアプリ</span>
+          <span className="bg-gradient-to-r from-orange-500 to-yellow-500 bg-clip-text text-transparent">すきまフィット</span>
         </h1>
         <p className="text-lg md:text-xl text-gray-700">
-          カメラに向かって運動して、リアルタイムでスコアを測定しよう！
+          カメラに向かって身体を動かして、作業のすきま時間にリフレッシュ！
         </p>
       </header>
 
@@ -114,25 +115,28 @@ function App() {
           <CameraView 
             onScoreUpdate={setCurrentScore}
             isActive={isSessionActive}
+            onCameraError={setHasCameraError}
           />
           
-          <div className="mt-6">
-            {!isSessionActive ? (
-              <button 
-                className="w-full py-4 px-8 bg-gradient-to-r from-orange-400 to-yellow-400 hover:from-orange-500 hover:to-yellow-500 text-white font-bold text-lg rounded-full uppercase tracking-wider shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 hover:scale-105"
-                onClick={startSession}
-              >
-                セッション開始
-              </button>
-            ) : (
-              <button 
-                className="w-full py-4 px-8 bg-gradient-to-r from-red-400 to-pink-400 hover:from-red-500 hover:to-pink-500 text-white font-bold text-lg rounded-full uppercase tracking-wider shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 hover:scale-105"
-                onClick={endSession}
-              >
-                セッション終了
-              </button>
-            )}
-          </div>
+          {!hasCameraError && (
+            <div className="mt-6">
+              {!isSessionActive ? (
+                <button 
+                  className="w-full py-4 px-8 bg-gradient-to-r from-orange-400 to-yellow-400 hover:from-orange-500 hover:to-yellow-500 text-white font-bold text-lg rounded-full uppercase tracking-wider shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 hover:scale-105"
+                  onClick={startSession}
+                >
+                  セッション開始
+                </button>
+              ) : (
+                <button 
+                  className="w-full py-4 px-8 bg-gradient-to-r from-red-400 to-pink-400 hover:from-red-500 hover:to-pink-500 text-white font-bold text-lg rounded-full uppercase tracking-wider shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 hover:scale-105"
+                  onClick={endSession}
+                >
+                  セッション終了
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-3xl p-6 shadow-2xl border-2 border-orange-200">

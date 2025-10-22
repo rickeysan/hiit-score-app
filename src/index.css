@@ -224,5 +224,324 @@
   animation: fade-in 0.5s ease-out forwards;
 }
 
+/* カメラOFF表示 */
+.camera-off-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 400px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%);
+  border-radius: 1rem;
+}
+
+.camera-off-content {
+  text-align: center;
+  padding: 2rem;
+}
+
+.camera-off-icon {
+  margin-bottom: 1.5rem;
+  animation: pulse-slow 2s ease-in-out infinite;
+}
+
+.camera-off-icon-static {
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+@keyframes pulse-slow {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}
+
+.camera-off-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #ea580c;
+  margin-bottom: 0.5rem;
+}
+
+.camera-off-message {
+  font-size: 1rem;
+  color: #9a3412;
+  margin-bottom: 1rem;
+}
+
+/* プライバシー通知（カメラOFF画面） */
+.privacy-notice {
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  border: 2px solid #d1d5db;
+}
+
+/* プライバシー通知（カメラON画面） */
+.privacy-notice-camera-on {
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin-top: 1rem;
+  border: 2px solid #d1d5db;
+  text-align: left;
+}
+
+.privacy-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.privacy-text {
+  font-size: 0.85rem;
+  color: #6b7280;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.camera-help-btn {
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
+  color: white;
+  border: none;
+  border-radius: 9999px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.camera-help-btn:hover {
+  background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* モーダル */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 1rem;
+  animation: fade-in 0.3s ease-out;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 1rem;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modal-slide-up 0.3s ease-out;
+}
+
+@keyframes modal-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 2px solid #fed7aa;
+  background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%);
+  border-radius: 1rem 1rem 0 0;
+}
+
+.modal-header h3 {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #ea580c;
+  margin: 0;
+}
+
+.modal-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: rgba(234, 88, 12, 0.1);
+  color: #ea580c;
+  font-size: 1.5rem;
+  line-height: 1;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close:hover {
+  background: rgba(234, 88, 12, 0.2);
+  transform: rotate(90deg);
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+/* プライバシー通知（モーダル） */
+.privacy-notice-modal {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  border: 2px solid #86efac;
+}
+
+.privacy-title-modal {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #065f46;
+  margin-bottom: 0.75rem;
+}
+
+.privacy-text-modal {
+  font-size: 0.9rem;
+  color: #047857;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.error-detail {
+  margin-bottom: 1.5rem;
+}
+
+.error-message-detail {
+  padding: 1rem;
+  background: rgba(249, 115, 22, 0.1);
+  border-left: 4px solid #f97316;
+  border-radius: 0.5rem;
+  color: #9a3412;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.error-instructions {
+  text-align: left;
+  margin-bottom: 1.5rem;
+}
+
+.error-instructions h4 {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #f97316;
+  margin-bottom: 0.75rem;
+}
+
+.error-instructions ol,
+.error-instructions ul {
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+  color: #7c2d12;
+}
+
+.error-instructions li {
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+.error-instructions strong {
+  color: #ea580c;
+}
+
+.browser-help {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 2px solid rgba(249, 115, 22, 0.2);
+}
+
+.browser-help p {
+  font-weight: 600;
+  color: #9a3412;
+  margin-bottom: 0.75rem;
+}
+
+.error-reload-btn {
+  width: 100%;
+  padding: 0.75rem 2rem;
+  background: linear-gradient(135deg, #f97316 0%, #eab308 100%);
+  color: white;
+  border: none;
+  border-radius: 9999px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.error-reload-btn:hover {
+  background: linear-gradient(135deg, #ea580c 0%, #f59e0b 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* カメラコンテナ */
+.camera-container {
+  position: relative;
+}
+
+.video-wrapper {
+  position: relative;
+  width: 100%;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: #000;
+}
+
+.camera-video {
+  width: 100%;
+  height: auto;
+  display: block;
+  transform: scaleX(-1);
+}
+
+.pose-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(-1);
+}
+
+.camera-status {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 0.5rem;
+  text-align: center;
+  font-weight: 500;
+  color: #7c2d12;
+}
+
 
 

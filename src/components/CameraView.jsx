@@ -1,12 +1,13 @@
 import React, { useRef, useEffect, useState } from 'react';
 import * as tf from '@tensorflow/tfjs';
-import * as posedetection from '@tensorflow-models/pose-detection';
+import * as poseDetection from '@tensorflow-models/pose-detection';
 
-export default function CameraView({ onScoreUpdate, isActive }) {
+export default function CameraView({ onScoreUpdate, isActive, onCameraError }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState(null);
+  const [showModal, setShowModal] = useState(false);
   const isMountedRef = useRef(true);
   const onScoreUpdateRef = useRef(onScoreUpdate);
   const isActiveRef = useRef(isActive);
@@ -20,6 +21,35 @@ export default function CameraView({ onScoreUpdate, isActive }) {
     isActiveRef.current = isActive;
     console.log('🔄 isActiveが変更されました:', isActive);
   }, [isActive]);
+
+  // モーダルのESCキー対応とスクロールロック
+  useEffect(() => {
+    if (showModal) {
+      // スクロールをロック
+      document.body.style.overflow = 'hidden';
+      
+      // ESCキーでモーダルを閉じる
+      const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+          setShowModal(false);
+        }
+      };
+      
+      window.addEventListener('keydown', handleEscape);
+      
+      return () => {
+        document.body.style.overflow = 'unset';
+        window.removeEventListener('keydown', handleEscape);
+      };
+    }
+  }, [showModal]);
+
+  // エラー状態を親コンポーネントに通知
+  useEffect(() => {
+    if (onCameraError) {
+      onCameraError(!!error);
+    }
+  }, [error, onCameraError]);
 
   useEffect(() => {
     isMountedRef.current = true; // マウント時にtrueに設定
@@ -271,11 +301,16 @@ export default function CameraView({ onScoreUpdate, isActive }) {
         if (!isMountedRef.current) return;
         
         console.log('🏃 MoveNetモデルを読み込み中...');
-        detector = await posedetection.createDetector(
-          posedetection.SupportedModels.MoveNet,
-          {
-            modelType: posedetection.movenet.modelType.SINGLEPOSE_LIGHTNING
-          }
+        // WebGLバックエンドを明示的に設定
+        await tf.setBackend('webgl');
+        await tf.ready();
+        
+        const detectorConfig = {
+          modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING
+        };
+        detector = await poseDetection.createDetector(
+          poseDetection.SupportedModels.MoveNet, 
+          detectorConfig
         );
         console.log('✅ TensorFlow.jsとMoveNetが初期化されました');
       } catch (err) {
@@ -330,65 +365,127 @@ export default function CameraView({ onScoreUpdate, isActive }) {
     };
   }, []); // 空の依存配列で初回マウント時のみ実行
 
-  if (error) {
-    return (
-      <div className="text-left p-8 bg-white/95 rounded-2xl border-2 border-red-500 shadow-xl text-gray-800 max-w-2xl mx-auto">
-        <h3 className="text-red-500 mb-4 text-center text-2xl font-bold">カメラのアクセスエラー</h3>
-        <p className="bg-red-50 p-4 rounded-lg mb-6 border-l-4 border-red-500 font-medium">{error}</p>
-        
-        <div className="bg-green-50 p-6 rounded-xl mb-6 border border-green-200">
-          <h4 className="text-green-600 mb-4 text-xl font-bold">解決方法：</h4>
-          <ol className="pl-6 mb-4 list-decimal">
-            <li className="mb-3 leading-relaxed">ブラウザのアドレスバー左側にある<strong className="text-red-500 font-semibold">鍵アイコン</strong>または<strong className="text-red-500 font-semibold">カメラアイコン</strong>をクリック</li>
-            <li className="mb-3 leading-relaxed">「カメラ」の設定を<strong className="text-red-500 font-semibold">「許可」</strong>に変更</li>
-            <li className="mb-3 leading-relaxed">下のボタンをクリックしてページを再読み込み</li>
-          </ol>
-          
-          <div className="mt-4 pt-4 border-t border-green-200">
-            <p className="mb-2 text-gray-700"><strong>それでも解決しない場合：</strong></p>
-            <ul className="pl-6 list-disc">
-              <li className="mb-2 text-gray-600 leading-relaxed">HTTPSで接続されているか確認（localhostは許可されています）</li>
-              <li className="mb-2 text-gray-600 leading-relaxed">他のアプリがカメラを使用していないか確認</li>
-              <li className="mb-2 text-gray-600 leading-relaxed">ブラウザを再起動してみてください</li>
-            </ul>
-          </div>
+  return (
+    <>
+      <div className="camera-container">
+        <div className="video-wrapper">
+          {error ? (
+            // カメラエラー時の表示
+            <div className="camera-off-overlay">
+              <div className="camera-off-content">
+                {/* カメラOFFアイコン */}
+                <div className="camera-off-icon-static">
+                  <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="60" cy="60" r="50" fill="#e5e7eb" />
+                    <rect x="25" y="45" width="50" height="35" rx="5" fill="#9ca3af" />
+                    <path d="M75 52L95 42V78L75 68V52Z" fill="#9ca3af" />
+                    {/* バツ印 */}
+                    <line x1="20" y1="20" x2="100" y2="100" stroke="#6b7280" strokeWidth="8" strokeLinecap="round" />
+                    <line x1="100" y1="20" x2="20" y2="100" stroke="#6b7280" strokeWidth="8" strokeLinecap="round" />
+                  </svg>
+                </div>
+                
+                <h3 className="camera-off-title">カメラがOFFになっています</h3>
+                <p className="camera-off-message">カメラへのアクセスが必要です</p>
+                
+                <div className="privacy-notice">
+                  <p className="privacy-title">🔒 プライバシー保護について</p>
+                  <p className="privacy-text">
+                    映像はあなたのPC内だけで処理されます。録画もされず、インターネット上に送信されることもありません。安心してご利用ください。
+                  </p>
+                </div>
+                
+                <button 
+                  className="camera-help-btn"
+                  onClick={() => setShowModal(true)}
+                >
+                  📋 カメラをONにするには
+                </button>
+              </div>
+            </div>
+          ) : (
+            // カメラ正常時の表示
+            <>
+              <video 
+                ref={videoRef} 
+                className="camera-video"
+                autoPlay 
+                playsInline 
+                muted
+              />
+              <canvas 
+                ref={canvasRef} 
+                className="pose-canvas"
+              />
+            </>
+          )}
         </div>
         
-        <button 
-          className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-none py-4 px-8 rounded-full text-lg font-bold cursor-pointer w-full transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
-          onClick={() => window.location.reload()}
-        >
-          ページを再読み込み
-        </button>
+        <div className="camera-status">
+          {!isInitialized ? (
+            <p>カメラを初期化中...</p>
+          ) : !isActive ? (
+            <>
+              <p>セッション開始ボタンを押して運動を開始してください</p>
+              <div className="privacy-notice-camera-on">
+                <p className="privacy-title">🔒 プライバシー保護について</p>
+                <p className="privacy-text">
+                  映像はあなたのPC内だけで処理されます。録画もされず、インターネット上に送信されることもありません。安心してご利用ください。
+                </p>
+              </div>
+            </>
+          ) : (
+            <p>🎯 運動を検出中...</p>
+          )}
+        </div>
       </div>
-    );
-  }
 
-  return (
-    <div className="text-center">
-      <div className="relative inline-block rounded-2xl overflow-hidden shadow-2xl">
-        <video 
-          ref={videoRef} 
-          className="w-full max-w-2xl h-auto block scale-x-[-1]"
-          autoPlay 
-          playsInline 
-          muted
-        />
-        <canvas 
-          ref={canvasRef} 
-          className="absolute top-0 left-0 w-full h-full pointer-events-none"
-        />
-      </div>
-      
-      <div className="mt-4 text-lg opacity-90">
-        {!isInitialized ? (
-          <p>カメラを初期化中...</p>
-        ) : !isActive ? (
-          <p>セッション開始ボタンを押して運動を開始してください</p>
-        ) : (
-          <p>運動を検出中...</p>
-        )}
-      </div>
-    </div>
+      {/* カメラ設定モーダル */}
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>📋 カメラをONにする方法</h3>
+              <button className="modal-close" onClick={() => setShowModal(false)}>
+                ✕
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              <div className="privacy-notice-modal">
+                <p className="privacy-title-modal">🔒 あなたのプライバシーを守ります</p>
+                <p className="privacy-text-modal">
+                  カメラ映像はブラウザ内でリアルタイム処理され、録画や保存は一切行いません。
+                  すべての処理がお使いのデバイス内で完結するため、第三者にデータが送信されることはありません。
+                </p>
+              </div>
+              
+              <div className="error-instructions">
+                <h4>基本的な解決手順：</h4>
+                <ol>
+                  <li>ブラウザのアドレスバー左側にある<strong>🔒 鍵アイコン</strong>または<strong>🎥 カメラアイコン</strong>をクリック</li>
+                  <li>「カメラ」の設定を<strong>「許可」</strong>に変更</li>
+                  <li>下のボタンをクリックしてページを再読み込み</li>
+                </ol>
+                
+                <div className="browser-help">
+                  <p><strong>それでも解決しない場合：</strong></p>
+                  <ul>
+                    <li>他のアプリがカメラを使用していないか確認</li>
+                  </ul>
+                </div>
+              </div>
+              
+              <button 
+                className="error-reload-btn"
+                onClick={() => window.location.reload()}
+              >
+                🔄 ページを再読み込み
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
