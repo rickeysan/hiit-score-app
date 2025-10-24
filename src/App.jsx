@@ -3,6 +3,7 @@ import CameraView from './components/CameraView'
 import SessionHistory from './components/SessionHistory'
 import Fireworks from './components/Fireworks'
 import { Analytics } from '@vercel/analytics/react'
+import { requestNotificationPermission, setNotificationTimer, scheduleDelayedNotification, sendImmediateNotification } from './firebase'
 
 function App() {
   // 体操データの配列
@@ -105,6 +106,11 @@ function App() {
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0)
   const lastMilestoneRef = useRef(0)
   const congratulationsShownRef = useRef(false)
+  const [notificationStatus, setNotificationStatus] = useState('')
+  const [isNotificationScheduled, setIsNotificationScheduled] = useState(false)
+  const [notificationPermission, setNotificationPermission] = useState('default')
+  const [timerStatus, setTimerStatus] = useState('')
+  const [isTimerSet, setIsTimerSet] = useState(false)
 
   // 現在選択中の体操
   const currentExercise = exercises[currentExerciseIndex]
@@ -198,6 +204,109 @@ function App() {
     setCurrentExerciseIndex((prev) => 
       prev === exercises.length - 1 ? 0 : prev + 1
     )
+  }
+
+  // 通知権限をリクエスト
+  const handleRequestNotificationPermission = async () => {
+    try {
+      const token = await requestNotificationPermission()
+      if (token) {
+        setNotificationPermission('granted')
+        setNotificationStatus('通知権限が許可されました！')
+      } else {
+        setNotificationPermission('denied')
+        setNotificationStatus('通知権限が拒否されました')
+      }
+    } catch (error) {
+      console.error('通知権限のリクエストエラー:', error)
+      setNotificationStatus('エラーが発生しました')
+    }
+  }
+
+  // 10秒後にFCM通知を送信
+  const handleScheduleNotification = async () => {
+    if (notificationPermission !== 'granted') {
+      setNotificationStatus('まず通知権限を許可してください')
+      return
+    }
+
+    try {
+      const success = await scheduleDelayedNotification(
+        'すきまフィット',
+        '運動の時間です！身体を動かしてリフレッシュしましょう 🏃‍♀️',
+        10
+      )
+      
+      if (success) {
+        setIsNotificationScheduled(true)
+        setNotificationStatus('10秒後にFCM通知が送信されます...')
+        
+        // 10秒後にステータスをリセット
+        setTimeout(() => {
+          setIsNotificationScheduled(false)
+          setNotificationStatus('FCM通知が送信されました！')
+        }, 10000)
+      } else {
+        setNotificationStatus('FCM通知のスケジュールに失敗しました')
+      }
+    } catch (error) {
+      console.error('FCM通知スケジュールエラー:', error)
+      setNotificationStatus('エラーが発生しました')
+    }
+  }
+
+  // 即座にFCM通知を送信（テスト用）
+  const handleImmediateNotification = async () => {
+    if (notificationPermission !== 'granted') {
+      setNotificationStatus('まず通知権限を許可してください')
+      return
+    }
+
+    try {
+      const success = await sendImmediateNotification(
+        'すきまフィット',
+        '即座にFCM通知を送信しました！ 🚀'
+      )
+      
+      if (success) {
+        setNotificationStatus('即座にFCM通知が送信されました！')
+      } else {
+        setNotificationStatus('即座FCM通知の送信に失敗しました')
+      }
+    } catch (error) {
+      console.error('即座FCM通知送信エラー:', error)
+      setNotificationStatus('エラーが発生しました')
+    }
+  }
+
+  // 新しいAPIを使ってタイマーを設定
+  const handleSetTimer = async (delaySeconds = 10) => {
+    try {
+      setTimerStatus('タイマーを設定中...')
+      setIsTimerSet(true)
+      
+      const result = await setNotificationTimer(
+        delaySeconds,
+        'すきまフィット',
+        '運動の時間です！身体を動かしてリフレッシュしましょう 🏃‍♀️'
+      )
+      
+      if (result.success) {
+        setTimerStatus(`タイマーが設定されました！${delaySeconds}秒後に通知されます`)
+        console.log('タイマー設定成功:', result)
+      } else {
+        setTimerStatus('タイマーの設定に失敗しました')
+      }
+    } catch (error) {
+      console.error('タイマー設定エラー:', error)
+      setTimerStatus(`エラー: ${error.message}`)
+    } finally {
+      // 3秒後にステータスをリセット
+      setTimeout(() => {
+        setIsTimerSet(false)
+        setTimerStatus('')
+      }, 3000)
+    }
   }
 
   return (
@@ -388,6 +497,125 @@ function App() {
           <SessionHistory 
             sessions={sessionHistory}
           />
+        </div>
+
+        {/* 通知機能セクション */}
+        <div className="md:col-span-2 bg-white rounded-3xl p-6 shadow-2xl border-2 border-orange-200">
+          <h2 className="text-2xl font-bold mb-6 text-gray-800 text-center">🔔 プッシュ通知機能</h2>
+          
+          <div className="max-w-md mx-auto space-y-4">
+            {/* 通知権限の状態表示 */}
+            <div className="text-center">
+              <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${
+                notificationPermission === 'granted' 
+                  ? 'bg-green-100 text-green-800' 
+                  : notificationPermission === 'denied'
+                  ? 'bg-red-100 text-red-800'
+                  : 'bg-gray-100 text-gray-800'
+              }`}>
+                {notificationPermission === 'granted' && '✅ 通知許可済み'}
+                {notificationPermission === 'denied' && '❌ 通知拒否済み'}
+                {notificationPermission === 'default' && '⏳ 通知未設定'}
+              </div>
+            </div>
+
+            {/* 通知権限リクエストボタン */}
+            {notificationPermission !== 'granted' && (
+              <button
+                onClick={handleRequestNotificationPermission}
+                className="w-full py-3 px-6 bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 text-white font-bold text-lg rounded-lg shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5"
+              >
+                🔔 通知権限を許可する
+              </button>
+            )}
+
+            {/* 新しいAPIテストボタン */}
+            {notificationPermission === 'granted' && (
+              <div className="space-y-3">
+                {/* 新しいAPIを使ってタイマー設定 */}
+                <button
+                  onClick={() => handleSetTimer(10)}
+                  disabled={isTimerSet}
+                  className={`w-full py-3 px-6 font-bold text-lg rounded-lg shadow-md transition-all duration-300 ${
+                    isTimerSet
+                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-green-400 to-green-500 hover:from-green-500 hover:to-green-600 text-white hover:shadow-lg hover:-translate-y-0.5'
+                  }`}
+                >
+                  {isTimerSet ? '⏳ タイマー設定中...' : '🆕 新しいAPIでタイマー設定（10秒）'}
+                </button>
+                
+                {/* 5秒タイマー */}
+                <button
+                  onClick={() => handleSetTimer(5)}
+                  disabled={isTimerSet}
+                  className={`w-full py-2 px-4 font-semibold text-sm rounded-lg shadow-md transition-all duration-300 ${
+                    isTimerSet
+                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-purple-400 to-purple-500 hover:from-purple-500 hover:to-purple-600 text-white hover:shadow-lg hover:-translate-y-0.5'
+                  }`}
+                >
+                  🆕 新しいAPIでタイマー設定（5秒）
+                </button>
+                
+                {/* 既存のFCM通知ボタン */}
+                <button
+                  onClick={handleScheduleNotification}
+                  disabled={isNotificationScheduled}
+                  className={`w-full py-3 px-6 font-bold text-lg rounded-lg shadow-md transition-all duration-300 ${
+                    isNotificationScheduled
+                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-orange-400 to-yellow-400 hover:from-orange-500 hover:to-yellow-500 text-white hover:shadow-lg hover:-translate-y-0.5'
+                  }`}
+                >
+                  {isNotificationScheduled ? '⏳ FCM通知送信中...' : '🚀 10秒後にFCM通知を送信'}
+                </button>
+                
+                {/* 即座通知ボタン（テスト用） */}
+                <button
+                  onClick={handleImmediateNotification}
+                  className="w-full py-2 px-4 bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 text-white font-semibold text-sm rounded-lg shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5"
+                >
+                  ⚡ 即座にFCM通知を送信（テスト用）
+                </button>
+              </div>
+            )}
+
+            {/* ステータス表示 */}
+            {(notificationStatus || timerStatus) && (
+              <div className="text-center space-y-2">
+                {notificationStatus && (
+                  <p className={`text-sm font-medium ${
+                    notificationStatus.includes('エラー') || notificationStatus.includes('失敗')
+                      ? 'text-red-600'
+                      : notificationStatus.includes('許可') || notificationStatus.includes('送信')
+                      ? 'text-green-600'
+                      : 'text-blue-600'
+                  }`}>
+                    {notificationStatus}
+                  </p>
+                )}
+                {timerStatus && (
+                  <p className={`text-sm font-medium ${
+                    timerStatus.includes('エラー') || timerStatus.includes('失敗')
+                      ? 'text-red-600'
+                      : timerStatus.includes('設定')
+                      ? 'text-green-600'
+                      : 'text-blue-600'
+                  }`}>
+                    {timerStatus}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* 説明文 */}
+            <div className="text-center text-sm text-gray-600">
+              <p>この機能を使うと、ボタンを押してから10秒後に<strong>サーバーサイドFCM</strong>でプッシュ通知が送信されます。</p>
+              <p className="mt-1">Google Cloud Functionsを使用して、本格的なプッシュ通知を実現！</p>
+              <p className="mt-1 text-xs text-gray-500">※ブラウザが閉じていても通知が届きます</p>
+            </div>
+          </div>
         </div>
       </main>
 
