@@ -111,6 +111,11 @@ function App() {
   const [notificationPermission, setNotificationPermission] = useState('default')
   const [timerStatus, setTimerStatus] = useState('')
   const [isTimerSet, setIsTimerSet] = useState(false)
+  
+  // BGM関連の状態
+  const [isBgmPlaying, setIsBgmPlaying] = useState(false)
+  const [bgmVolume, setBgmVolume] = useState(0.5)
+  const bgmAudioRef = useRef(null)
 
   // 現在選択中の体操
   const currentExercise = exercises[currentExerciseIndex]
@@ -279,6 +284,36 @@ function App() {
     }
   }
 
+  // BGM再生/停止の切り替え
+  const toggleBgm = () => {
+    if (!bgmAudioRef.current) return
+    
+    if (isBgmPlaying) {
+      bgmAudioRef.current.pause()
+      setIsBgmPlaying(false)
+    } else {
+      bgmAudioRef.current.play()
+      setIsBgmPlaying(true)
+    }
+  }
+
+  // BGM音量の変更
+  const handleVolumeChange = (e) => {
+    const newVolume = parseFloat(e.target.value)
+    setBgmVolume(newVolume)
+    if (bgmAudioRef.current) {
+      bgmAudioRef.current.volume = newVolume
+    }
+  }
+
+  // BGM音声の初期化
+  useEffect(() => {
+    if (bgmAudioRef.current) {
+      bgmAudioRef.current.volume = bgmVolume
+      bgmAudioRef.current.loop = true
+    }
+  }, [bgmVolume])
+
   // 新しいAPIを使ってタイマーを設定
   const handleSetTimer = async (delaySeconds = 10) => {
     try {
@@ -312,6 +347,13 @@ function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-orange-100">
       <Analytics />
+      
+      {/* BGM用のaudio要素（非表示） */}
+      <audio 
+        ref={bgmAudioRef}
+        src="/music/jungle-waves-drumampbass-electronic-inspiring-promo-345013.mp3"
+        preload="auto"
+      />
       <header className="text-center py-2 px-4 bg-white shadow-md border-b-4 border-orange-400">
         <h1 className="flex items-center justify-center gap-4 text-4xl md:text-5xl font-bold mb-0">
           <video 
@@ -341,7 +383,7 @@ function App() {
           />
           
           {!hasCameraError && (
-            <div className="mt-6">
+            <div className="mt-6 space-y-4">
               {!isSessionActive ? (
                 <button 
                   className="w-full py-4 px-8 bg-gradient-to-r from-orange-400 to-yellow-400 hover:from-orange-500 hover:to-yellow-500 text-white font-bold text-lg rounded-full uppercase tracking-wider shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 hover:scale-105"
@@ -357,6 +399,38 @@ function App() {
                   セッション終了
                 </button>
               )}
+              
+              {/* BGMコントロール */}
+              <div className="bg-gray-50 rounded-lg px-3 py-2 border border-gray-200">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-gray-500">🎵 BGM</span>
+                  <button
+                    onClick={toggleBgm}
+                    className={`px-3 py-1 rounded text-xs font-medium transition-all duration-200 ${
+                      isBgmPlaying
+                        ? 'bg-gray-300 hover:bg-gray-400 text-gray-700'
+                        : 'bg-gray-200 hover:bg-gray-300 text-gray-600'
+                    }`}
+                  >
+                    {isBgmPlaying ? '⏸︎ 停止' : '▶︎ 再生'}
+                  </button>
+                </div>
+                
+                {/* 音量調整 */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400">🔉</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={bgmVolume}
+                    onChange={handleVolumeChange}
+                    className="flex-1 h-1 bg-gray-200 rounded appearance-none cursor-pointer accent-gray-400"
+                  />
+                  <span className="text-xs text-gray-400 min-w-[3ch] tabular-nums">{Math.round(bgmVolume * 100)}%</span>
+                </div>
+              </div>
             </div>
           )}
         </div>
