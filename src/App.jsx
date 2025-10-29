@@ -33,6 +33,7 @@ function App() {
   
   // 効果音用のaudio ref
   const successSoundRef = useRef(null)
+  const goalAchievedSoundRef = useRef(null) // 目標達成時の効果音
   
   // スコアの増加率を監視するための前回スコア
   const previousScoreRef = useRef(0)
@@ -115,6 +116,22 @@ function App() {
       congratulationsShownRef.current = true
       setShowCongratulations(true)
       
+      // 目標達成の効果音を再生
+      console.log('🎉 目標達成！効果音再生を試みます', { isSoundEnabled, hasRef: !!goalAchievedSoundRef.current })
+      if (isSoundEnabled && goalAchievedSoundRef.current) {
+        goalAchievedSoundRef.current.currentTime = 0
+        goalAchievedSoundRef.current.volume = 0.7
+        goalAchievedSoundRef.current.play()
+          .then(() => {
+            console.log('✅ 目標達成効果音の再生に成功')
+          })
+          .catch(err => {
+            console.log('❌ 目標達成効果音の再生エラー:', err)
+          })
+      } else {
+        console.log('⚠️ 効果音がOFFまたはrefが存在しません')
+      }
+      
       // 5秒後に非表示
       const timer = setTimeout(() => {
         setShowCongratulations(false)
@@ -122,7 +139,7 @@ function App() {
       
       return () => clearTimeout(timer)
     }
-  }, [currentScore, isSessionActive, currentExercise.targetScore])
+  }, [currentScore, isSessionActive, currentExercise.targetScore, isSoundEnabled])
 
   const startSession = () => {
     setIsSessionActive(true)
@@ -237,6 +254,13 @@ function App() {
       <audio 
         ref={successSoundRef}
         src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZSA0PVKvm7K5aFAo+l9zy0YgyBht0wPDemUYMDliq5+6nWBMJNJHS8dF+MQUjdsXw3pVDDA9Yq+buplgTCTKP0vLTfjEFI3fG8N+WRAsPWKzm7qdbFAgzj9Ly04AyBSV3xvDemkYMDlir5+6nWRMJMo/S8tOAMQUkdsbw3ppGDA9Xq+buqFkTCTKP0vLTgDEFJHfG8N6aRgwOWKvm7qdZFAkykNLy04ExBSR3xvDemkUMDlir5+6oWRMJMpDS8tOAMQUkd8bw3ppGDA9YrObuqFoUCTKQ0vLTgDEFJHfG796aRgwOWKzm7qhaEwkykNLy04AyBSN3xvDemkYMDlir5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA5Yq+fuqFoTCTKP0vLUgDIFJHfG8N6aRgwOWKvm7qhaFAkykNLy04AyBSR3xvDemkYMDlir5u6oWhMJMpDS8tOAMgUkd8Xw3ppGDA9YrObuqFoTCTKQ0vLTgDIFJHfG8N6aRgwPWKvm7qhaEwkykNLy04AyBSR3xvDemkYMD1is5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrObuqFoUCTKQ0vLTgDIFJHfG8N6aRgwPWKzn7qhaEwkykNLy04AyBSR3xvDemkYMD1is5+6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrOfulVkTCTKQ0vLTgDIFJHfG8N6aRgwPWKzm7qhaFAkykNLy04AyBSR3xvDemkYMD1is5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrObuqFoTCTKQ0vLTgDIFI3fG8N6aRgwPWKzm7qhaEwkykNLy04AyBSR3xvDemkYMDlis5u6oWhMJMpDS8tOAMgUjd8bw3ppGDA9YrObuqFoTCTKQ0vLTgDIFJHfG8N6aRgwPWKzm7qhaEwkykNLy04AyBSR3xvDemkYMD1is5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrObuqFoTCTKQ0vLTgDIFJHfG8N6aRgwPWKzm7qhaEwkykNHy04AyBSR3xvDemkYMD1is5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrObuqFoTCTKQ0vLTgDIFJHfG8N6aRgwPWKzm7qhaEwkykNLy04AyBSR3xvDemkYMD1is5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrObuqFoTCTKQ0vLTgDIFJHfG8N6aRgwPWKzm7qhaEwkykNLy04AyBSR3xvDemkYMD1is5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrObuqFoTCTKQ0vLTgDIFJHfG8N6aRgwPWKzm7qhaEwkykNLy04AyBSR3xvDemkYMD1is5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrObuqFoTCTKQ0vLTgDIFJHfG8N6aRgwPWKzm7qhaEwkykNLy04AyBSR3xvDemkYMD1is5u6oWhMJ"
+        preload="auto"
+      />
+      
+      {/* 目標達成時の効果音用のaudio要素（非表示） */}
+      <audio 
+        ref={goalAchievedSoundRef}
+        src="/music/audiomass-output-2.mp3"
         preload="auto"
       />
       
