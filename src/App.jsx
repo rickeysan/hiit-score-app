@@ -3,93 +3,9 @@ import CameraView from './components/CameraView'
 import SessionHistory from './components/SessionHistory'
 import Fireworks from './components/Fireworks'
 import { Analytics } from '@vercel/analytics/react'
-import { requestNotificationPermission, setNotificationTimer, scheduleDelayedNotification, sendImmediateNotification } from './firebase'
+import { exercises } from './data/exercises'
 
 function App() {
-  // 体操データの配列
-  const exercises = [
-    {
-      id: 1,
-      title: '腕回し',
-      videoUrl: '/work.mp4',
-      description: '肩こり・首こりの緩和に効果的',
-      effects: [
-        '肩こり・首こりの緩和',
-        '上半身の血行促進',
-        '姿勢改善とリフレッシュ効果'
-      ],
-      steps: [
-        'カメラの前に立ち、肩幅に足を開きます',
-        '両腕を左右に大きく広げます',
-        'リズミカルに腕を上下に動かします',
-        '肩甲骨を意識しながら、大きく動かしましょう'
-      ],
-      points: [
-        '呼吸を止めずに、自然な呼吸を心がけましょう',
-        '無理のない範囲で動かし、痛みを感じたら中止してください',
-        'カメラに全身が映るように立ち位置を調整しましょう'
-      ],
-      timing: [
-        'デスクワークの合間（1時間に1回程度）',
-        '会議の前後のリフレッシュに',
-        '集中力が落ちてきたと感じたとき'
-      ]
-    },
-    {
-      id: 2,
-      title: '全身ストレッチ',
-      videoUrl: '/46744_640x360.mp4',
-      description: '全身をほぐしてリフレッシュ',
-      effects: [
-        '全身の血行促進',
-        '筋肉の緊張緩和',
-        'リラックス効果'
-      ],
-      steps: [
-        'カメラの前に立ち、リラックスします',
-        '腕を大きく上に伸ばします',
-        '体を左右にゆっくり傾けます',
-        '深呼吸しながら全身をほぐします'
-      ],
-      points: [
-        'ゆっくりとした動作を心がけましょう',
-        '深い呼吸を意識してください',
-        '痛みを感じる場合は無理をしないでください'
-      ],
-      timing: [
-        '起床後や就寝前',
-        '長時間のデスクワーク後',
-        '運動前のウォームアップに'
-      ]
-    },
-    {
-      id: 3,
-      title: 'ジャンピングジャック',
-      videoUrl: '/work.mp4',
-      description: '心拍数を上げて有酸素運動',
-      effects: [
-        '心肺機能の向上',
-        '全身の筋肉を活性化',
-        'カロリー消費'
-      ],
-      steps: [
-        '足を揃えて立ちます',
-        'ジャンプしながら両足を開き、両手を頭上で合わせます',
-        'ジャンプして元の姿勢に戻ります',
-        'リズミカルに繰り返します'
-      ],
-      points: [
-        '着地時は膝を柔らかく使いましょう',
-        '呼吸を止めないように',
-        '周囲の安全を確認してください'
-      ],
-      timing: [
-        '眠気覚ましに',
-        '運動不足解消に',
-        '集中力を高めたいとき'
-      ]
-    }
-  ]
 
   const [currentScore, setCurrentScore] = useState(0)
   const [displayScore, setDisplayScore] = useState(0)
@@ -106,16 +22,14 @@ function App() {
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0)
   const lastMilestoneRef = useRef(0)
   const congratulationsShownRef = useRef(false)
-  const [notificationStatus, setNotificationStatus] = useState('')
-  const [isNotificationScheduled, setIsNotificationScheduled] = useState(false)
-  const [notificationPermission, setNotificationPermission] = useState('default')
-  const [timerStatus, setTimerStatus] = useState('')
-  const [isTimerSet, setIsTimerSet] = useState(false)
   
   // BGM関連の状態
   const [isBgmPlaying, setIsBgmPlaying] = useState(false)
   const [bgmVolume, setBgmVolume] = useState(0.5)
   const bgmAudioRef = useRef(null)
+  
+  // 効果音ON/OFFの状態
+  const [isSoundEnabled, setIsSoundEnabled] = useState(true)
 
   // 現在選択中の体操
   const currentExercise = exercises[currentExerciseIndex]
@@ -156,9 +70,10 @@ function App() {
     }
   }, [currentScore, isSessionActive])
 
-  // スコアが200に達したら「お疲れ様でした！」を表示
+  // スコアが目標に達したら「お疲れ様でした！」を表示
   useEffect(() => {
-    if (Math.floor(currentScore) >= 200 && isSessionActive && !congratulationsShownRef.current) {
+    const targetScore = currentExercise.targetScore
+    if (Math.floor(currentScore) >= targetScore && isSessionActive && !congratulationsShownRef.current) {
       congratulationsShownRef.current = true
       setShowCongratulations(true)
       
@@ -169,7 +84,7 @@ function App() {
       
       return () => clearTimeout(timer)
     }
-  }, [currentScore, isSessionActive])
+  }, [currentScore, isSessionActive, currentExercise.targetScore])
 
   const startSession = () => {
     setIsSessionActive(true)
@@ -211,78 +126,6 @@ function App() {
     )
   }
 
-  // 通知権限をリクエスト
-  const handleRequestNotificationPermission = async () => {
-    try {
-      const token = await requestNotificationPermission()
-      if (token) {
-        setNotificationPermission('granted')
-        setNotificationStatus('通知権限が許可されました！')
-      } else {
-        setNotificationPermission('denied')
-        setNotificationStatus('通知権限が拒否されました')
-      }
-    } catch (error) {
-      console.error('通知権限のリクエストエラー:', error)
-      setNotificationStatus('エラーが発生しました')
-    }
-  }
-
-  // 10秒後にFCM通知を送信
-  const handleScheduleNotification = async () => {
-    if (notificationPermission !== 'granted') {
-      setNotificationStatus('まず通知権限を許可してください')
-      return
-    }
-
-    try {
-      const success = await scheduleDelayedNotification(
-        'すきまフィット',
-        '運動の時間です！身体を動かしてリフレッシュしましょう 🏃‍♀️',
-        10
-      )
-      
-      if (success) {
-        setIsNotificationScheduled(true)
-        setNotificationStatus('10秒後にFCM通知が送信されます...')
-        
-        // 10秒後にステータスをリセット
-        setTimeout(() => {
-          setIsNotificationScheduled(false)
-          setNotificationStatus('FCM通知が送信されました！')
-        }, 10000)
-      } else {
-        setNotificationStatus('FCM通知のスケジュールに失敗しました')
-      }
-    } catch (error) {
-      console.error('FCM通知スケジュールエラー:', error)
-      setNotificationStatus('エラーが発生しました')
-    }
-  }
-
-  // 即座にFCM通知を送信（テスト用）
-  const handleImmediateNotification = async () => {
-    if (notificationPermission !== 'granted') {
-      setNotificationStatus('まず通知権限を許可してください')
-      return
-    }
-
-    try {
-      const success = await sendImmediateNotification(
-        'すきまフィット',
-        '即座にFCM通知を送信しました！ 🚀'
-      )
-      
-      if (success) {
-        setNotificationStatus('即座にFCM通知が送信されました！')
-      } else {
-        setNotificationStatus('即座FCM通知の送信に失敗しました')
-      }
-    } catch (error) {
-      console.error('即座FCM通知送信エラー:', error)
-      setNotificationStatus('エラーが発生しました')
-    }
-  }
 
   // BGM再生/停止の切り替え
   const toggleBgm = () => {
@@ -314,36 +157,6 @@ function App() {
     }
   }, [bgmVolume])
 
-  // 新しいAPIを使ってタイマーを設定
-  const handleSetTimer = async (delaySeconds = 10) => {
-    try {
-      setTimerStatus('タイマーを設定中...')
-      setIsTimerSet(true)
-      
-      const result = await setNotificationTimer(
-        delaySeconds,
-        'すきまフィット',
-        '運動の時間です！身体を動かしてリフレッシュしましょう 🏃‍♀️'
-      )
-      
-      if (result.success) {
-        setTimerStatus(`タイマーが設定されました！${delaySeconds}秒後に通知されます`)
-        console.log('タイマー設定成功:', result)
-      } else {
-        setTimerStatus('タイマーの設定に失敗しました')
-      }
-    } catch (error) {
-      console.error('タイマー設定エラー:', error)
-      setTimerStatus(`エラー: ${error.message}`)
-    } finally {
-      // 3秒後にステータスをリセット
-      setTimeout(() => {
-        setIsTimerSet(false)
-        setTimerStatus('')
-      }, 3000)
-    }
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-orange-100">
       <Analytics />
@@ -374,7 +187,7 @@ function App() {
         </p>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+      <main className="max-w-7xl mx-auto px-4 py-4 grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
         <div className="bg-white rounded-3xl p-6 shadow-2xl border-2 border-orange-200">
           <CameraView 
             onScoreUpdate={setCurrentScore}
@@ -429,6 +242,35 @@ function App() {
                     className="flex-1 h-1 bg-gray-200 rounded appearance-none cursor-pointer accent-gray-400"
                   />
                   <span className="text-xs text-gray-400 min-w-[3ch] tabular-nums">{Math.round(bgmVolume * 100)}%</span>
+                </div>
+              </div>
+              
+              {/* 効果音ON/OFFコントロール */}
+              <div className="bg-gray-50 rounded-lg px-3 py-2 border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-500">🔔 効果音</span>
+                  <div className="flex gap-3">
+                    <label className="flex items-center gap-1 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="sound"
+                        checked={isSoundEnabled}
+                        onChange={() => setIsSoundEnabled(true)}
+                        className="w-3 h-3 text-gray-500 cursor-pointer"
+                      />
+                      <span className="text-xs text-gray-600">ON</span>
+                    </label>
+                    <label className="flex items-center gap-1 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="sound"
+                        checked={!isSoundEnabled}
+                        onChange={() => setIsSoundEnabled(false)}
+                        className="w-3 h-3 text-gray-500 cursor-pointer"
+                      />
+                      <span className="text-xs text-gray-600">OFF</span>
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
@@ -537,7 +379,7 @@ function App() {
                   strokeWidth="12"
                   fill="none"
                   strokeDasharray={2 * Math.PI * 90}
-                  strokeDashoffset={2 * Math.PI * 90 * (1 - Math.min(displayScore / 200, 1))}
+                  strokeDashoffset={2 * Math.PI * 90 * (1 - Math.min(displayScore / currentExercise.targetScore, 1))}
                   strokeLinecap="round"
                   style={{ transition: 'stroke-dashoffset 0.3s ease-out' }}
                 />
@@ -554,7 +396,7 @@ function App() {
                 <div className="text-5xl font-bold bg-gradient-to-r from-orange-500 to-yellow-500 bg-clip-text text-transparent">
                   {Math.floor(displayScore)}
                 </div>
-                <div className="text-sm text-gray-500 mt-1">/ 200</div>
+                <div className="text-sm text-gray-500 mt-1">/ {currentExercise.targetScore}</div>
               </div>
             </div>
             
@@ -571,125 +413,6 @@ function App() {
           <SessionHistory 
             sessions={sessionHistory}
           />
-        </div>
-
-        {/* 通知機能セクション */}
-        <div className="md:col-span-2 bg-white rounded-3xl p-6 shadow-2xl border-2 border-orange-200">
-          <h2 className="text-2xl font-bold mb-6 text-gray-800 text-center">🔔 プッシュ通知機能</h2>
-          
-          <div className="max-w-md mx-auto space-y-4">
-            {/* 通知権限の状態表示 */}
-            <div className="text-center">
-              <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${
-                notificationPermission === 'granted' 
-                  ? 'bg-green-100 text-green-800' 
-                  : notificationPermission === 'denied'
-                  ? 'bg-red-100 text-red-800'
-                  : 'bg-gray-100 text-gray-800'
-              }`}>
-                {notificationPermission === 'granted' && '✅ 通知許可済み'}
-                {notificationPermission === 'denied' && '❌ 通知拒否済み'}
-                {notificationPermission === 'default' && '⏳ 通知未設定'}
-              </div>
-            </div>
-
-            {/* 通知権限リクエストボタン */}
-            {notificationPermission !== 'granted' && (
-              <button
-                onClick={handleRequestNotificationPermission}
-                className="w-full py-3 px-6 bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 text-white font-bold text-lg rounded-lg shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5"
-              >
-                🔔 通知権限を許可する
-              </button>
-            )}
-
-            {/* 新しいAPIテストボタン */}
-            {notificationPermission === 'granted' && (
-              <div className="space-y-3">
-                {/* 新しいAPIを使ってタイマー設定 */}
-                <button
-                  onClick={() => handleSetTimer(10)}
-                  disabled={isTimerSet}
-                  className={`w-full py-3 px-6 font-bold text-lg rounded-lg shadow-md transition-all duration-300 ${
-                    isTimerSet
-                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-green-400 to-green-500 hover:from-green-500 hover:to-green-600 text-white hover:shadow-lg hover:-translate-y-0.5'
-                  }`}
-                >
-                  {isTimerSet ? '⏳ タイマー設定中...' : '🆕 新しいAPIでタイマー設定（10秒）'}
-                </button>
-                
-                {/* 5秒タイマー */}
-                <button
-                  onClick={() => handleSetTimer(5)}
-                  disabled={isTimerSet}
-                  className={`w-full py-2 px-4 font-semibold text-sm rounded-lg shadow-md transition-all duration-300 ${
-                    isTimerSet
-                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-purple-400 to-purple-500 hover:from-purple-500 hover:to-purple-600 text-white hover:shadow-lg hover:-translate-y-0.5'
-                  }`}
-                >
-                  🆕 新しいAPIでタイマー設定（5秒）
-                </button>
-                
-                {/* 既存のFCM通知ボタン */}
-                <button
-                  onClick={handleScheduleNotification}
-                  disabled={isNotificationScheduled}
-                  className={`w-full py-3 px-6 font-bold text-lg rounded-lg shadow-md transition-all duration-300 ${
-                    isNotificationScheduled
-                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-orange-400 to-yellow-400 hover:from-orange-500 hover:to-yellow-500 text-white hover:shadow-lg hover:-translate-y-0.5'
-                  }`}
-                >
-                  {isNotificationScheduled ? '⏳ FCM通知送信中...' : '🚀 10秒後にFCM通知を送信'}
-                </button>
-                
-                {/* 即座通知ボタン（テスト用） */}
-                <button
-                  onClick={handleImmediateNotification}
-                  className="w-full py-2 px-4 bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 text-white font-semibold text-sm rounded-lg shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5"
-                >
-                  ⚡ 即座にFCM通知を送信（テスト用）
-                </button>
-              </div>
-            )}
-
-            {/* ステータス表示 */}
-            {(notificationStatus || timerStatus) && (
-              <div className="text-center space-y-2">
-                {notificationStatus && (
-                  <p className={`text-sm font-medium ${
-                    notificationStatus.includes('エラー') || notificationStatus.includes('失敗')
-                      ? 'text-red-600'
-                      : notificationStatus.includes('許可') || notificationStatus.includes('送信')
-                      ? 'text-green-600'
-                      : 'text-blue-600'
-                  }`}>
-                    {notificationStatus}
-                  </p>
-                )}
-                {timerStatus && (
-                  <p className={`text-sm font-medium ${
-                    timerStatus.includes('エラー') || timerStatus.includes('失敗')
-                      ? 'text-red-600'
-                      : timerStatus.includes('設定')
-                      ? 'text-green-600'
-                      : 'text-blue-600'
-                  }`}>
-                    {timerStatus}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* 説明文 */}
-            <div className="text-center text-sm text-gray-600">
-              <p>この機能を使うと、ボタンを押してから10秒後に<strong>サーバーサイドFCM</strong>でプッシュ通知が送信されます。</p>
-              <p className="mt-1">Google Cloud Functionsを使用して、本格的なプッシュ通知を実現！</p>
-              <p className="mt-1 text-xs text-gray-500">※ブラウザが閉じていても通知が届きます</p>
-            </div>
-          </div>
         </div>
       </main>
 
