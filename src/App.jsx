@@ -30,6 +30,22 @@ function App() {
   
   // 効果音ON/OFFの状態
   const [isSoundEnabled, setIsSoundEnabled] = useState(true)
+  
+  // 効果音用のaudio ref
+  const successSoundRef = useRef(null)
+  
+  // スコアの増加率を監視するための前回スコア
+  const previousScoreRef = useRef(0)
+  const lastSoundTimeRef = useRef(0)
+  
+  // ヘッダーの表示・非表示の状態
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true)
+  
+  // 動画の再生状態
+  const [isVideoPaused, setIsVideoPaused] = useState(false)
+  const [isModalVideoPaused, setIsModalVideoPaused] = useState(false)
+  const videoRef = useRef(null)
+  const modalVideoRef = useRef(null)
 
   // 現在選択中の体操
   const currentExercise = exercises[currentExerciseIndex]
@@ -54,6 +70,28 @@ function App() {
       setDisplayScore(currentScore)
     }
   }, [currentScore, displayScore])
+
+  // スコアの増加率を監視して効果音を再生
+  useEffect(() => {
+    if (!isSessionActive || !isSoundEnabled) return
+    
+    const scoreIncrease = currentScore - previousScoreRef.current
+    const now = Date.now()
+    
+    // スコアが5以上増加し、前回の効果音から500ms以上経過している場合
+    if (scoreIncrease >= 5 && now - lastSoundTimeRef.current > 500) {
+      if (successSoundRef.current) {
+        successSoundRef.current.currentTime = 0
+        successSoundRef.current.volume = 0.3
+        successSoundRef.current.play().catch(err => {
+          console.log('効果音の再生エラー:', err)
+        })
+      }
+      lastSoundTimeRef.current = now
+    }
+    
+    previousScoreRef.current = currentScore
+  }, [currentScore, isSessionActive, isSoundEnabled])
 
   // スコアがマイルストーンを超えたら花火を表示
   useEffect(() => {
@@ -93,6 +131,8 @@ function App() {
     lastMilestoneRef.current = 0 // マイルストーンをリセット
     congratulationsShownRef.current = false // お祝いメッセージをリセット
     setShowCongratulations(false)
+    previousScoreRef.current = 0 // 前回スコアをリセット
+    lastSoundTimeRef.current = 0 // 効果音タイミングをリセット
   }
 
   const endSession = () => {
@@ -126,6 +166,31 @@ function App() {
     )
   }
 
+  // 動画の再生/一時停止を切り替え
+  const toggleVideo = () => {
+    if (!videoRef.current) return
+    
+    if (isVideoPaused) {
+      videoRef.current.play()
+      setIsVideoPaused(false)
+      } else {
+      videoRef.current.pause()
+      setIsVideoPaused(true)
+    }
+  }
+  
+  // モーダル内動画の再生/一時停止を切り替え
+  const toggleModalVideo = () => {
+    if (!modalVideoRef.current) return
+    
+    if (isModalVideoPaused) {
+      modalVideoRef.current.play()
+      setIsModalVideoPaused(false)
+      } else {
+      modalVideoRef.current.pause()
+      setIsModalVideoPaused(true)
+    }
+  }
 
   // BGM再生/停止の切り替え
   const toggleBgm = () => {
@@ -134,7 +199,7 @@ function App() {
     if (isBgmPlaying) {
       bgmAudioRef.current.pause()
       setIsBgmPlaying(false)
-    } else {
+      } else {
       bgmAudioRef.current.play()
       setIsBgmPlaying(true)
     }
@@ -167,7 +232,47 @@ function App() {
         src="/music/jungle-waves-drumampbass-electronic-inspiring-promo-345013.mp3"
         preload="auto"
       />
-      <header className="text-center py-2 px-4 bg-white shadow-md border-b-4 border-orange-400">
+      
+      {/* 効果音用のaudio要素（非表示） */}
+      <audio 
+        ref={successSoundRef}
+        src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZSA0PVKvm7K5aFAo+l9zy0YgyBht0wPDemUYMDliq5+6nWBMJNJHS8dF+MQUjdsXw3pVDDA9Yq+buplgTCTKP0vLTfjEFI3fG8N+WRAsPWKzm7qdbFAgzj9Ly04AyBSV3xvDemkYMDlir5+6nWRMJMo/S8tOAMQUkdsbw3ppGDA9Xq+buqFkTCTKP0vLTgDEFJHfG8N6aRgwOWKvm7qdZFAkykNLy04ExBSR3xvDemkUMDlir5+6oWRMJMpDS8tOAMQUkd8bw3ppGDA9YrObuqFoUCTKQ0vLTgDEFJHfG796aRgwOWKzm7qhaEwkykNLy04AyBSN3xvDemkYMDlir5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA5Yq+fuqFoTCTKP0vLUgDIFJHfG8N6aRgwOWKvm7qhaFAkykNLy04AyBSR3xvDemkYMDlir5u6oWhMJMpDS8tOAMgUkd8Xw3ppGDA9YrObuqFoTCTKQ0vLTgDIFJHfG8N6aRgwPWKvm7qhaEwkykNLy04AyBSR3xvDemkYMD1is5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrObuqFoUCTKQ0vLTgDIFJHfG8N6aRgwPWKzn7qhaEwkykNLy04AyBSR3xvDemkYMD1is5+6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrOfulVkTCTKQ0vLTgDIFJHfG8N6aRgwPWKzm7qhaFAkykNLy04AyBSR3xvDemkYMD1is5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrObuqFoTCTKQ0vLTgDIFI3fG8N6aRgwPWKzm7qhaEwkykNLy04AyBSR3xvDemkYMDlis5u6oWhMJMpDS8tOAMgUjd8bw3ppGDA9YrObuqFoTCTKQ0vLTgDIFJHfG8N6aRgwPWKzm7qhaEwkykNLy04AyBSR3xvDemkYMD1is5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrObuqFoTCTKQ0vLTgDIFJHfG8N6aRgwPWKzm7qhaEwkykNHy04AyBSR3xvDemkYMD1is5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrObuqFoTCTKQ0vLTgDIFJHfG8N6aRgwPWKzm7qhaEwkykNLy04AyBSR3xvDemkYMD1is5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrObuqFoTCTKQ0vLTgDIFJHfG8N6aRgwPWKzm7qhaEwkykNLy04AyBSR3xvDemkYMD1is5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrObuqFoTCTKQ0vLTgDIFJHfG8N6aRgwPWKzm7qhaEwkykNLy04AyBSR3xvDemkYMD1is5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrObuqFoTCTKQ0vLTgDIFJHfG8N6aRgwPWKzm7qhaEwkykNLy04AyBSR3xvDemkYMD1is5u6oWhMJ"
+        preload="auto"
+      />
+      
+      {/* 集中モード切り替えボタン（画面右上固定） */}
+      <div className="fixed top-4 right-4 z-50">
+        <button
+          onClick={() => setIsHeaderVisible(!isHeaderVisible)}
+          className={`flex items-center gap-2 px-4 py-2 rounded-full shadow-lg font-semibold text-sm transition-all duration-300 ${
+            isHeaderVisible 
+              ? 'bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-200'
+              : 'bg-gradient-to-r from-orange-400 to-amber-500 hover:from-orange-500 hover:to-amber-600 text-white border-2 border-orange-300'
+          }`}
+          aria-label={isHeaderVisible ? '集中モードをオン' : '集中モードをオフ'}
+        >
+          {isHeaderVisible ? (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+              <span>集中モード</span>
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29z" />
+              </svg>
+              <span>集中モード ON</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      <header className={`bg-white shadow-md border-b-4 border-orange-400 transition-all duration-300 overflow-hidden ${
+        isHeaderVisible ? 'opacity-100 max-h-[500px]' : 'opacity-0 max-h-0'
+      }`}>
+        <div className="max-w-7xl mx-auto px-4 py-2 text-center">
         <h1 className="flex items-center justify-center gap-4 text-4xl md:text-5xl font-bold mb-0">
           <video 
             src="/work.mp4" 
@@ -185,6 +290,7 @@ function App() {
         <p className="text-lg md:text-xl text-gray-700">
           カメラに向かって身体を動かして、作業のすきま時間にリフレッシュ！
         </p>
+        </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-4 grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
@@ -249,27 +355,41 @@ function App() {
               <div className="bg-gray-50 rounded-lg px-3 py-2 border border-gray-200">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-gray-500">🔔 効果音</span>
-                  <div className="flex gap-3">
-                    <label className="flex items-center gap-1 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="sound"
-                        checked={isSoundEnabled}
-                        onChange={() => setIsSoundEnabled(true)}
-                        className="w-3 h-3 text-gray-500 cursor-pointer"
+                  <div className="flex items-center gap-2">
+                    {/* OFF表示 */}
+                    <div className={`flex items-center gap-1 transition-opacity duration-200 ${
+                      !isSoundEnabled ? 'opacity-100' : 'opacity-40'
+                    }`}>
+                      <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+                      </svg>
+                      <span className="text-xs text-gray-400 font-medium">OFF</span>
+                    </div>
+                    
+                    {/* トグルスイッチ */}
+                    <button
+                      onClick={() => setIsSoundEnabled(!isSoundEnabled)}
+                      className={`relative w-10 h-5 rounded-full transition-colors duration-200 ${
+                        isSoundEnabled ? 'bg-gray-400' : 'bg-gray-300'
+                      }`}
+                      aria-label={isSoundEnabled ? '効果音をオフにする' : '効果音をオンにする'}
+                    >
+                      <div
+                        className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${
+                          isSoundEnabled ? 'translate-x-5' : 'translate-x-0'
+                        }`}
                       />
-                      <span className="text-xs text-gray-600">ON</span>
-                    </label>
-                    <label className="flex items-center gap-1 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="sound"
-                        checked={!isSoundEnabled}
-                        onChange={() => setIsSoundEnabled(false)}
-                        className="w-3 h-3 text-gray-500 cursor-pointer"
-                      />
-                      <span className="text-xs text-gray-600">OFF</span>
-                    </label>
+                    </button>
+                    
+                    {/* ON表示 */}
+                    <div className={`flex items-center gap-1 transition-opacity duration-200 ${
+                      isSoundEnabled ? 'opacity-100' : 'opacity-40'
+                    }`}>
+                      <span className="text-xs text-gray-600 font-medium">ON</span>
+                      <svg className="w-3 h-3 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                      </svg>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -288,15 +408,19 @@ function App() {
                   className="animate-slide-in"
                 >
                   <div className="text-center mb-4">
-                    <h3 className="text-2xl font-bold text-gray-800 bg-gradient-to-r from-orange-500 to-yellow-500 bg-clip-text text-transparent mb-1">
+                    <h3 className="text-xl font-bold text-gray-800">
+                      <span className="bg-gradient-to-r from-orange-500 to-yellow-500 bg-clip-text text-transparent">
                       {currentExercise.title}
+                      </span>
+                      <span className="text-sm text-gray-600 font-normal ml-2">
+                        {currentExercise.description}
+                      </span>
                     </h3>
-                    <p className="text-sm text-gray-600">{currentExercise.description}</p>
                   </div>
                   
-                  <h4 className="text-lg font-semibold text-gray-700 mb-3 text-center">お手本映像</h4>
                   <div className="relative rounded-xl overflow-hidden shadow-lg border-2 border-orange-200">
                     <video 
+                      ref={videoRef}
                       key={currentExercise.videoUrl}
                       src={currentExercise.videoUrl}
                       autoPlay 
@@ -306,6 +430,22 @@ function App() {
                       className="w-full h-auto"
                       style={{ imageRendering: 'crisp-edges' }}
                     />
+                    {/* 一時停止ボタン */}
+                    <button
+                      onClick={toggleVideo}
+                      className="absolute top-2 right-2 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-all duration-200"
+                      aria-label={isVideoPaused ? '再生' : '一時停止'}
+                    >
+                      {isVideoPaused ? (
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                        </svg>
+                      )}
+                    </button>
                   </div>
                   
                   <button
@@ -458,9 +598,9 @@ function App() {
 
             {/* モーダルコンテンツ */}
             <div className="p-6 space-y-6">
-              {/* お手本映像 */}
-              <div className="rounded-xl overflow-hidden shadow-lg border-2 border-orange-200">
+              <div className="relative rounded-xl overflow-hidden shadow-lg border-2 border-orange-200">
                 <video 
+                  ref={modalVideoRef}
                   src={currentExercise.videoUrl}
                   autoPlay 
                   loop 
@@ -469,6 +609,22 @@ function App() {
                   className="w-full h-auto"
                   style={{ imageRendering: 'crisp-edges' }}
                 />
+                {/* 一時停止ボタン */}
+                <button
+                  onClick={toggleModalVideo}
+                  className="absolute top-2 right-2 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-all duration-200"
+                  aria-label={isModalVideoPaused ? '再生' : '一時停止'}
+                >
+                  {isModalVideoPaused ? (
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                    </svg>
+                  )}
+                </button>
               </div>
 
               {/* 解説セクション */}
