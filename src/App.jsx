@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import CameraView from './components/CameraView'
 import SessionHistory from './components/SessionHistory'
 import Fireworks from './components/Fireworks'
@@ -72,15 +72,15 @@ function App() {
     }
   }, [currentScore, displayScore])
 
-  // スコアの増加率を監視して効果音を再生
+  // スコア変更時の処理を統合（効果音、マイルストーン、目標達成）
   useEffect(() => {
-    if (!isSessionActive || !isSoundEnabled) return
+    if (!isSessionActive) return
     
     const scoreIncrease = currentScore - previousScoreRef.current
     const now = Date.now()
     
-    // スコアが5以上増加し、前回の効果音から500ms以上経過している場合
-    if (scoreIncrease >= 5 && now - lastSoundTimeRef.current > 500) {
+    // 1. 効果音再生（スコアが5以上増加し、前回から500ms以上経過）
+    if (isSoundEnabled && scoreIncrease >= 5 && now - lastSoundTimeRef.current > 500) {
       if (successSoundRef.current) {
         successSoundRef.current.currentTime = 0
         successSoundRef.current.volume = 0.3
@@ -91,45 +91,29 @@ function App() {
       lastSoundTimeRef.current = now
     }
     
-    previousScoreRef.current = currentScore
-  }, [currentScore, isSessionActive, isSoundEnabled])
-
-  // スコアがマイルストーンを超えたら花火を表示
-  useEffect(() => {
+    // 2. マイルストーン達成時の花火表示
     const currentMilestone = milestones.find(
       m => Math.floor(currentScore) >= m && lastMilestoneRef.current < m
     )
-
-    if (currentMilestone && isSessionActive) {
+    if (currentMilestone) {
       lastMilestoneRef.current = currentMilestone
       setShowFireworks(true)
-      
-      // 効果音を追加する場合はここに
       console.log('🎉 マイルストーン達成!', currentMilestone)
     }
-  }, [currentScore, isSessionActive])
-
-  // スコアが目標に達したら「お疲れ様でした！」を表示
-  useEffect(() => {
+    
+    // 3. 目標達成時のお祝いメッセージ
     const targetScore = currentExercise.targetScore
-    if (Math.floor(currentScore) >= targetScore && isSessionActive && !congratulationsShownRef.current) {
+    if (Math.floor(currentScore) >= targetScore && !congratulationsShownRef.current) {
       congratulationsShownRef.current = true
       setShowCongratulations(true)
       
       // 目標達成の効果音を再生
-      console.log('🎉 目標達成！効果音再生を試みます', { isSoundEnabled, hasRef: !!goalAchievedSoundRef.current })
       if (isSoundEnabled && goalAchievedSoundRef.current) {
         goalAchievedSoundRef.current.currentTime = 0
         goalAchievedSoundRef.current.volume = 0.7
-        goalAchievedSoundRef.current.play()
-          .then(() => {
-            console.log('✅ 目標達成効果音の再生に成功')
-          })
-          .catch(err => {
-            console.log('❌ 目標達成効果音の再生エラー:', err)
-          })
-      } else {
-        console.log('⚠️ 効果音がOFFまたはrefが存在しません')
+        goalAchievedSoundRef.current.play().catch(err => {
+          console.log('❌ 目標達成効果音の再生エラー:', err)
+        })
       }
       
       // 5秒後に非表示
@@ -137,11 +121,17 @@ function App() {
         setShowCongratulations(false)
       }, 5000)
       
+      // 前回スコアを更新
+      previousScoreRef.current = currentScore
+      
       return () => clearTimeout(timer)
     }
-  }, [currentScore, isSessionActive, currentExercise.targetScore, isSoundEnabled])
+    
+    // 前回スコアを更新
+    previousScoreRef.current = currentScore
+  }, [currentScore, isSessionActive, isSoundEnabled, currentExercise.targetScore])
 
-  const startSession = () => {
+  const startSession = useCallback(() => {
     setIsSessionActive(true)
     setCurrentScore(0)
     setDisplayScore(0)
@@ -150,9 +140,9 @@ function App() {
     setShowCongratulations(false)
     previousScoreRef.current = 0 // 前回スコアをリセット
     lastSoundTimeRef.current = 0 // 効果音タイミングをリセット
-  }
+  }, [])
 
-  const endSession = () => {
+  const endSession = useCallback(() => {
     setIsSessionActive(false)
     if (currentScore > 0) {
       const newSession = {
@@ -165,28 +155,28 @@ function App() {
       }
       setSessionHistory(prev => [newSession, ...prev])
     }
-  }
+  }, [currentScore, currentExercise.id, currentExercise.title])
 
-  const handleFireworksComplete = () => {
+  const handleFireworksComplete = useCallback(() => {
     setShowFireworks(false)
-  }
+  }, [])
 
   // 前の体操に切り替え
-  const handlePreviousExercise = () => {
+  const handlePreviousExercise = useCallback(() => {
     setCurrentExerciseIndex((prev) => 
       prev === 0 ? exercises.length - 1 : prev - 1
     )
-  }
+  }, [])
 
   // 次の体操に切り替え
-  const handleNextExercise = () => {
+  const handleNextExercise = useCallback(() => {
     setCurrentExerciseIndex((prev) => 
       prev === exercises.length - 1 ? 0 : prev + 1
     )
-  }
+  }, [])
 
   // 動画の再生/一時停止を切り替え
-  const toggleVideo = () => {
+  const toggleVideo = useCallback(() => {
     if (!videoRef.current) return
     
     if (isVideoPaused) {
@@ -196,10 +186,10 @@ function App() {
       videoRef.current.pause()
       setIsVideoPaused(true)
     }
-  }
+  }, [isVideoPaused])
   
   // モーダル内動画の再生/一時停止を切り替え
-  const toggleModalVideo = () => {
+  const toggleModalVideo = useCallback(() => {
     if (!modalVideoRef.current) return
     
     if (isModalVideoPaused) {
@@ -209,10 +199,10 @@ function App() {
       modalVideoRef.current.pause()
       setIsModalVideoPaused(true)
     }
-  }
+  }, [isModalVideoPaused])
 
   // BGM再生/停止の切り替え
-  const toggleBgm = () => {
+  const toggleBgm = useCallback(() => {
     if (!bgmAudioRef.current) return
     
     if (isBgmPlaying) {
@@ -222,22 +212,23 @@ function App() {
       bgmAudioRef.current.play()
       setIsBgmPlaying(true)
     }
-  }
+  }, [isBgmPlaying])
 
   // BGM音量の変更
-  const handleVolumeChange = (e) => {
+  const handleVolumeChange = useCallback((e) => {
     const newVolume = parseFloat(e.target.value)
     setBgmVolume(newVolume)
     if (bgmAudioRef.current) {
       bgmAudioRef.current.volume = newVolume
     }
-  }
+  }, [])
 
-  // BGM音声の初期化
-  useEffect(() => {
-    if (bgmAudioRef.current) {
-      bgmAudioRef.current.volume = bgmVolume
-      bgmAudioRef.current.loop = true
+  // BGM refが設定されたときの初期化（useEffectは不要）
+  const initBgmAudio = useCallback((audioElement) => {
+    if (audioElement) {
+      audioElement.volume = bgmVolume
+      audioElement.loop = true
+      bgmAudioRef.current = audioElement
     }
   }, [bgmVolume])
 
@@ -247,7 +238,7 @@ function App() {
       
       {/* BGM用のaudio要素（非表示） */}
       <audio 
-        ref={bgmAudioRef}
+        ref={initBgmAudio}
         src="/music/jungle-waves-drumampbass-electronic-inspiring-promo-345013.mp3"
         preload="auto"
       />

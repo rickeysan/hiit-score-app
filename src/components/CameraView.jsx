@@ -280,7 +280,7 @@ export default function CameraView({ onScoreUpdate, isActive, onCameraError }) {
             console.log('💯 スコア加算:', movementScore.toFixed(2));
           }
           
-          onScoreUpdateRef.current(prev => prev + movementScore * 0.01); // スケーリング
+          onScoreUpdateRef.current(prev => prev + movementScore * 0.005); // スケーリング（増加速度を調整）
         }
         
         prevPoses = poses;
