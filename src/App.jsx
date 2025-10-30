@@ -159,7 +159,9 @@ function App() {
         id: Date.now(),
         score: Math.floor(currentScore),
         timestamp: new Date().toLocaleString('ja-JP'),
-        duration: '1分' // 実際のセッション時間を記録
+        duration: '1分', // 実際のセッション時間を記録
+        exerciseId: currentExercise.id,
+        exerciseTitle: currentExercise.title
       }
       setSessionHistory(prev => [newSession, ...prev])
     }
@@ -240,7 +242,7 @@ function App() {
   }, [bgmVolume])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-orange-100">
+    <div className={`min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-orange-100 ${!isHeaderVisible ? 'focus-mode' : ''}`}>
       <Analytics />
       
       {/* BGM用のaudio要素（非表示） */}
@@ -265,7 +267,7 @@ function App() {
       />
       
       {/* 集中モード切り替えボタン（画面右上固定） */}
-      <div className="fixed top-4 right-4 z-50">
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
         <button
           onClick={() => setIsHeaderVisible(!isHeaderVisible)}
           className={`flex items-center gap-2 px-4 py-2 rounded-full shadow-lg font-semibold text-sm transition-all duration-300 ${
@@ -291,11 +293,30 @@ function App() {
             </>
           )}
         </button>
+        
+        {/* ヘルプアイコン */}
+        <div className="relative group">
+          <div className="w-6 h-6 rounded-full bg-gray-400 hover:bg-gray-500 text-white flex items-center justify-center cursor-help transition-colors duration-200 shadow-md">
+            <span className="text-sm font-bold">?</span>
+          </div>
+          
+          {/* ツールチップ */}
+          <div className="absolute top-full right-0 mt-2 w-64 p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-50">
+            <div className="relative">
+              {/* 上向きの三角形 */}
+              <div className="absolute -top-5 right-1 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[6px] border-b-gray-800"></div>
+              <p className="leading-relaxed">
+                {isHeaderVisible 
+                  ? 'ヘッダーを非表示にして、トレーニングに集中できます。スコア表示や動画がより見やすくなります。'
+                  : 'ヘッダーを表示して、アプリの説明を確認できます。'
+                }
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <header className={`bg-white shadow-md border-b-4 border-orange-400 transition-all duration-300 overflow-hidden ${
-        isHeaderVisible ? 'opacity-100 max-h-[500px]' : 'opacity-0 max-h-0'
-      }`}>
+      <header className="bg-white shadow-md border-b-4 border-orange-400 focus-mode-target">
         <div className="max-w-7xl mx-auto px-4 py-2 text-center">
         <h1 className="flex items-center justify-center gap-4 text-4xl md:text-5xl font-bold mb-0">
           <video 

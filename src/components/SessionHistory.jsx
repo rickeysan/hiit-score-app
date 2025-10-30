@@ -66,7 +66,14 @@ export default function SessionHistory({ sessions }) {
               </div>
               <div className="flex-1 flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
                 <div className="text-2xl font-bold text-orange-500 min-w-[60px]">{session.score}</div>
-                <div className="flex-1 text-sm text-gray-700">{session.timestamp}</div>
+                <div className="flex-1 flex flex-col gap-1">
+                  <div className="text-sm text-gray-700">{session.timestamp}</div>
+                  {session.exerciseTitle && (
+                    <div className="text-xs text-orange-600 font-semibold bg-orange-100 px-2 py-0.5 rounded-full inline-block w-fit">
+                      {session.exerciseTitle}
+                    </div>
+                  )}
+                </div>
                 <div className="text-sm text-gray-500 min-w-[50px]">{session.duration}</div>
               </div>
               <div className="w-10 text-center">

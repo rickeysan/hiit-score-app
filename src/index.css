@@ -559,3 +559,20 @@
   animation: slide-in 0.3s ease-out forwards;
 }
 
+/* 集中モード関連のスタイル */
+.focus-mode-target {
+  transition: opacity 0.3s ease, max-height 0.3s ease, margin 0.3s ease, padding 0.3s ease;
+  overflow: hidden;
+  opacity: 1;
+  max-height: 500px;
+}
+
+.focus-mode .focus-mode-target {
+  opacity: 0;
+  max-height: 0;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+

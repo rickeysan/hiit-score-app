@@ -421,7 +421,7 @@ export default function CameraView({ onScoreUpdate, isActive, onCameraError }) {
           )}
         </div>
         
-        <div className="camera-status">
+        <div className="camera-status focus-mode-target">
           {!isInitialized ? (
             <p>カメラを初期化中...</p>
           ) : !isActive ? (
