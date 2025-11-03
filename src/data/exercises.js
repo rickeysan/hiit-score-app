@@ -68,7 +68,7 @@ export const exercises = [
   //   title: 'ジャンピングジャック',
   //   videoUrl: '/work.mp4',
   //   description: '心拍数を上げて有酸素運動',
-  //   targetScore: 200, // 目標スコア
+  //   targetScore: 100, // 目標スコア
   //   effects: [
   //     '心肺機能の向上',
   //     '全身の筋肉を活性化',
