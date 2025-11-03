@@ -19,6 +19,7 @@ function App() {
   const [showCongratulations, setShowCongratulations] = useState(false)
   const [hasCameraError, setHasCameraError] = useState(false)
   const [showModal, setShowModal] = useState(false)
+  const [showUsageModal, setShowUsageModal] = useState(false)
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0)
   const lastMilestoneRef = useRef(0)
   const congratulationsShownRef = useRef(false)
@@ -32,12 +33,10 @@ function App() {
   const [isSoundEnabled, setIsSoundEnabled] = useState(true)
   
   // 効果音用のaudio ref
-  const successSoundRef = useRef(null)
   const goalAchievedSoundRef = useRef(null) // 目標達成時の効果音
   
   // スコアの増加率を監視するための前回スコア
   const previousScoreRef = useRef(0)
-  const lastSoundTimeRef = useRef(0)
   
   // ヘッダーの表示・非表示の状態
   const [isHeaderVisible, setIsHeaderVisible] = useState(true)
@@ -61,11 +60,11 @@ function App() {
 
   // スコアを滑らかに表示するアニメーション
   useEffect(() => {
-    const increment = (currentScore - displayScore) / 10
+    const increment = (currentScore - displayScore) / 5 // より速く追従するように変更
     if (Math.abs(currentScore - displayScore) > 0.1) {
       const timer = setTimeout(() => {
         setDisplayScore(prev => prev + increment)
-      }, 16) // 約60fps
+      }, 8) // より頻繁に更新（約120fps相当）
       return () => clearTimeout(timer)
     } else {
       setDisplayScore(currentScore)
@@ -76,24 +75,13 @@ function App() {
   useEffect(() => {
     if (!isSessionActive) return
     
-    const scoreIncrease = currentScore - previousScoreRef.current
-    const now = Date.now()
+    const targetScore = currentExercise.targetScore
+    const previousScore = Math.floor(previousScoreRef.current)
+    const currentScoreFloor = Math.floor(currentScore)
     
-    // 1. 効果音再生（スコアが5以上増加し、前回から500ms以上経過）
-    if (isSoundEnabled && scoreIncrease >= 5 && now - lastSoundTimeRef.current > 500) {
-      if (successSoundRef.current) {
-        successSoundRef.current.currentTime = 0
-        successSoundRef.current.volume = 0.3
-        successSoundRef.current.play().catch(err => {
-          console.log('効果音の再生エラー:', err)
-        })
-      }
-      lastSoundTimeRef.current = now
-    }
-    
-    // 2. マイルストーン達成時の花火表示
+    // 1. マイルストーン達成時の花火表示
     const currentMilestone = milestones.find(
-      m => Math.floor(currentScore) >= m && lastMilestoneRef.current < m
+      m => currentScoreFloor >= m && lastMilestoneRef.current < m
     )
     if (currentMilestone) {
       lastMilestoneRef.current = currentMilestone
@@ -101,9 +89,8 @@ function App() {
       console.log('🎉 マイルストーン達成!', currentMilestone)
     }
     
-    // 3. 目標達成時のお祝いメッセージ
-    const targetScore = currentExercise.targetScore
-    if (Math.floor(currentScore) >= targetScore && !congratulationsShownRef.current) {
+    // 2. 目標達成時のお祝いメッセージ
+    if (currentScoreFloor >= targetScore && !congratulationsShownRef.current) {
       congratulationsShownRef.current = true
       setShowCongratulations(true)
       
@@ -127,7 +114,7 @@ function App() {
       return () => clearTimeout(timer)
     }
     
-    // 前回スコアを更新
+    // 前回スコアを更新（最後に更新して、次回の比較に使用）
     previousScoreRef.current = currentScore
   }, [currentScore, isSessionActive, isSoundEnabled, currentExercise.targetScore])
 
@@ -139,7 +126,15 @@ function App() {
     congratulationsShownRef.current = false // お祝いメッセージをリセット
     setShowCongratulations(false)
     previousScoreRef.current = 0 // 前回スコアをリセット
-    lastSoundTimeRef.current = 0 // 効果音タイミングをリセット
+    
+    // 動画を最初から再生
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0
+      videoRef.current.play().catch(err => {
+        console.log('動画の再生エラー:', err)
+      })
+      setIsVideoPaused(false)
+    }
   }, [])
 
   const endSession = useCallback(() => {
@@ -243,22 +238,21 @@ function App() {
         preload="auto"
       />
       
-      {/* 効果音用のaudio要素（非表示） */}
-      <audio 
-        ref={successSoundRef}
-        src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZSA0PVKvm7K5aFAo+l9zy0YgyBht0wPDemUYMDliq5+6nWBMJNJHS8dF+MQUjdsXw3pVDDA9Yq+buplgTCTKP0vLTfjEFI3fG8N+WRAsPWKzm7qdbFAgzj9Ly04AyBSV3xvDemkYMDlir5+6nWRMJMo/S8tOAMQUkdsbw3ppGDA9Xq+buqFkTCTKP0vLTgDEFJHfG8N6aRgwOWKvm7qdZFAkykNLy04ExBSR3xvDemkUMDlir5+6oWRMJMpDS8tOAMQUkd8bw3ppGDA9YrObuqFoUCTKQ0vLTgDEFJHfG796aRgwOWKzm7qhaEwkykNLy04AyBSN3xvDemkYMDlir5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA5Yq+fuqFoTCTKP0vLUgDIFJHfG8N6aRgwOWKvm7qhaFAkykNLy04AyBSR3xvDemkYMDlir5u6oWhMJMpDS8tOAMgUkd8Xw3ppGDA9YrObuqFoTCTKQ0vLTgDIFJHfG8N6aRgwPWKvm7qhaEwkykNLy04AyBSR3xvDemkYMD1is5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrObuqFoUCTKQ0vLTgDIFJHfG8N6aRgwPWKzn7qhaEwkykNLy04AyBSR3xvDemkYMD1is5+6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrOfulVkTCTKQ0vLTgDIFJHfG8N6aRgwPWKzm7qhaFAkykNLy04AyBSR3xvDemkYMD1is5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrObuqFoTCTKQ0vLTgDIFI3fG8N6aRgwPWKzm7qhaEwkykNLy04AyBSR3xvDemkYMDlis5u6oWhMJMpDS8tOAMgUjd8bw3ppGDA9YrObuqFoTCTKQ0vLTgDIFJHfG8N6aRgwPWKzm7qhaEwkykNLy04AyBSR3xvDemkYMD1is5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrObuqFoTCTKQ0vLTgDIFJHfG8N6aRgwPWKzm7qhaEwkykNHy04AyBSR3xvDemkYMD1is5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrObuqFoTCTKQ0vLTgDIFJHfG8N6aRgwPWKzm7qhaEwkykNLy04AyBSR3xvDemkYMD1is5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrObuqFoTCTKQ0vLTgDIFJHfG8N6aRgwPWKzm7qhaEwkykNLy04AyBSR3xvDemkYMD1is5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrObuqFoTCTKQ0vLTgDIFJHfG8N6aRgwPWKzm7qhaEwkykNLy04AyBSR3xvDemkYMD1is5u6oWhMJMpDS8tOAMgUkd8bw3ppGDA9YrObuqFoTCTKQ0vLTgDIFJHfG8N6aRgwPWKzm7qhaEwkykNLy04AyBSR3xvDemkYMD1is5u6oWhMJ"
-        preload="auto"
-      />
-      
       {/* 目標達成時の効果音用のaudio要素（非表示） */}
       <audio 
         ref={goalAchievedSoundRef}
-        src="/music/audiomass-output-2.mp3"
+        src="/music/audiomass-output.mp3"
         preload="auto"
       />
       
       {/* 集中モード切り替えボタン（画面右上固定） */}
       <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+        <button
+          onClick={() => setShowUsageModal(true)}
+          className="flex items-center gap-2 px-4 py-2 rounded-full shadow-lg font-semibold text-sm transition-all duration-300 bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-200"
+        >
+          <span>使い方</span>
+        </button>
         <button
           onClick={() => setIsHeaderVisible(!isHeaderVisible)}
           className={`flex items-center gap-2 px-4 py-2 rounded-full shadow-lg font-semibold text-sm transition-all duration-300 ${
@@ -436,7 +430,7 @@ function App() {
         <div className="bg-white rounded-3xl p-6 shadow-2xl border-2 border-orange-200">
           <div className="flex flex-col items-center">            
             {/* 体操の説明カード */}
-            <div className="w-full max-w-[400px] mb-6 relative">
+            <div className="w-full max-w-[800px] mb-6 relative">
               {/* カードコンテンツ（スライドエフェクト付き） */}
               <div className="overflow-hidden">
                 <div 
@@ -454,42 +448,53 @@ function App() {
                     </h3>
                   </div>
                   
-                  <div className="relative rounded-xl overflow-hidden shadow-lg border-2 border-orange-200">
-                    <video 
-                      ref={videoRef}
-                      key={currentExercise.videoUrl}
-                      src={currentExercise.videoUrl}
-                      autoPlay 
-                      loop 
-                      muted 
-                      playsInline
-                      className="w-full h-auto"
-                      style={{ imageRendering: 'crisp-edges' }}
-                    />
-                    {/* 一時停止ボタン */}
-                    <button
-                      onClick={toggleVideo}
-                      className="absolute top-2 right-2 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-all duration-200"
-                      aria-label={isVideoPaused ? '再生' : '一時停止'}
-                    >
-                      {isVideoPaused ? (
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M8 5v14l11-7z" />
-                        </svg>
-                      ) : (
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
-                  
-                  <button
-                    onClick={() => setShowModal(true)}
-                    className="w-full mt-4 py-2 px-4 bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5"
-                  >
-                    📖 詳細を確認する
-                  </button>
+                  {currentExercise.comingSoon ? (
+                    <div className="relative rounded-xl overflow-hidden shadow-lg border-2 border-orange-200 bg-gray-100 flex items-center justify-center" style={{ minHeight: '400px' }}>
+                      <div className="text-center">
+                        <div className="text-4xl font-bold text-gray-400 mb-2">Coming soon</div>
+                        <div className="text-lg text-gray-500">新しいコンテンツを準備中です</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="relative rounded-xl overflow-hidden shadow-lg border-2 border-orange-200">
+                        <video 
+                          ref={videoRef}
+                          key={currentExercise.videoUrl}
+                          src={currentExercise.videoUrl}
+                          autoPlay 
+                          loop 
+                          muted 
+                          playsInline
+                          className="w-full h-auto"
+                          style={{ imageRendering: 'crisp-edges' }}
+                        />
+                        {/* 一時停止ボタン */}
+                        <button
+                          onClick={toggleVideo}
+                          className="absolute top-2 right-2 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-all duration-200"
+                          aria-label={isVideoPaused ? '再生' : '一時停止'}
+                        >
+                          {isVideoPaused ? (
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          ) : (
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                      
+                      <button
+                        onClick={() => setShowModal(true)}
+                        className="w-full mt-4 py-2 px-4 bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5"
+                      >
+                        📖 詳細を確認する
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -616,7 +621,7 @@ function App() {
           onClick={() => setShowModal(false)}
         >
           <div 
-            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* モーダルヘッダー */}
@@ -634,7 +639,7 @@ function App() {
 
             {/* モーダルコンテンツ */}
             <div className="p-6 space-y-6">
-              <div className="relative rounded-xl overflow-hidden shadow-lg border-2 border-orange-200">
+              <div className="relative rounded-xl overflow-hidden shadow-lg border-2 border-orange-200 max-w-[600px] mx-auto">
                 <video 
                   ref={modalVideoRef}
                   src={currentExercise.videoUrl}
@@ -725,6 +730,63 @@ function App() {
               {/* 閉じるボタン */}
               <button
                 onClick={() => setShowModal(false)}
+                className="w-full py-3 px-6 bg-gradient-to-r from-orange-400 to-yellow-400 hover:from-orange-500 hover:to-yellow-500 text-white font-bold text-lg rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 使い方モーダル */}
+      {showUsageModal && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[10001] flex items-center justify-center p-4"
+          onClick={() => setShowUsageModal(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* モーダルヘッダー */}
+            <div className="sticky top-0 bg-gradient-to-r from-orange-400 to-yellow-400 text-white p-6 rounded-t-2xl">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">アプリの使い方</h2>
+                <button
+                  onClick={() => setShowUsageModal(false)}
+                  className="text-white hover:text-gray-200 text-3xl font-bold transition-colors"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            {/* モーダルコンテンツ */}
+            <div className="p-6 space-y-6">
+              <div className="space-y-4">
+                <div className="bg-orange-50 rounded-lg p-6 border-2 border-orange-200">
+                  <h3 className="text-xl font-bold text-orange-600 mb-4 flex items-center gap-2">
+                    📸 1. カメラをオンにする
+                  </h3>
+                  <p className="text-gray-700 leading-relaxed">
+                    ブラウザでカメラのアクセス許可を求められたら、「許可」を選択してください。カメラが起動すると、リアルタイムで身体の動きを検出します。
+                  </p>
+                </div>
+
+                <div className="bg-blue-50 rounded-lg p-6 border-2 border-blue-200">
+                  <h3 className="text-xl font-bold text-blue-600 mb-4 flex items-center gap-2">
+                    🏃 2. 体操をマネする
+                  </h3>
+                  <p className="text-gray-700 leading-relaxed">
+                    画面に表示されている動画を見ながら、同じ動きをマネしてください。カメラがあなたの動きを検出し、正しく動くとスコアが増加します。目標スコアを達成すると、お祝いメッセージが表示されます！
+                  </p>
+                </div>
+              </div>
+
+              {/* 閉じるボタン */}
+              <button
+                onClick={() => setShowUsageModal(false)}
                 className="w-full py-3 px-6 bg-gradient-to-r from-orange-400 to-yellow-400 hover:from-orange-500 hover:to-yellow-500 text-white font-bold text-lg rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
               >
                 閉じる
