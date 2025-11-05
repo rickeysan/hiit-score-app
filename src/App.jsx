@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import CameraView from './components/CameraView'
 import SessionHistory from './components/SessionHistory'
 import Fireworks from './components/Fireworks'
+import WelcomeModal from './components/WelcomeModal'
+import BreathingModal from './components/BreathingModal'
 import { Analytics } from '@vercel/analytics/react'
 import { exercises } from './data/exercises'
 
@@ -46,6 +48,16 @@ function App() {
   const [isModalVideoPaused, setIsModalVideoPaused] = useState(false)
   const videoRef = useRef(null)
   const modalVideoRef = useRef(null)
+
+  // ウェルカムモーダルの表示状態
+  const [showWelcomeModal, setShowWelcomeModal] = useState(() => {
+    // localStorageから訪問済みフラグを確認
+    const hasVisited = localStorage.getItem('hasVisitedBefore')
+    return !hasVisited // 訪問済みでない場合はtrueを返す
+  })
+
+  // 深呼吸モーダルの表示状態
+  const [showBreathingModal, setShowBreathingModal] = useState(false)
 
   // 現在選択中の体操
   const currentExercise = exercises[currentExerciseIndex]
@@ -150,6 +162,8 @@ function App() {
       }
       setSessionHistory(prev => [newSession, ...prev])
     }
+    // 深呼吸モーダルを表示
+    setShowBreathingModal(true)
   }, [currentScore, currentExercise.id, currentExercise.title])
 
   const handleFireworksComplete = useCallback(() => {
@@ -226,6 +240,23 @@ function App() {
       bgmAudioRef.current = audioElement
     }
   }, [bgmVolume])
+
+  // ウェルカムモーダルを閉じる
+  const handleCloseWelcomeModal = useCallback(() => {
+    setShowWelcomeModal(false)
+    // localStorageに訪問済みフラグを保存
+    localStorage.setItem('hasVisitedBefore', 'true')
+  }, [])
+
+  // ウェルカムモーダルを開く（使い方ボタン用）
+  const handleOpenWelcomeModal = useCallback(() => {
+    setShowWelcomeModal(true)
+  }, [])
+
+  // 深呼吸モーダルを閉じる
+  const handleCloseBreathingModal = useCallback(() => {
+    setShowBreathingModal(false)
+  }, [])
 
   return (
     <div className={`min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-orange-100 ${!isHeaderVisible ? 'focus-mode' : ''}`}>
@@ -794,6 +825,11 @@ function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 深呼吸モーダル */}
+      {showBreathingModal && (
+        <BreathingModal onClose={handleCloseBreathingModal} />
       )}
     </div>
   )
