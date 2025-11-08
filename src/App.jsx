@@ -33,6 +33,7 @@ function App() {
   
   // 効果音ON/OFFの状態
   const [isSoundEnabled, setIsSoundEnabled] = useState(true)
+  const [isCameraEnabled, setIsCameraEnabled] = useState(true)
   
   // 効果音用のaudio ref
   const goalAchievedSoundRef = useRef(null) // 目標達成時の効果音
@@ -356,11 +357,21 @@ function App() {
 
       <main className="max-w-7xl mx-auto px-4 py-4 grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
         <div className="bg-white rounded-3xl p-6 shadow-2xl border-2 border-orange-200">
-          <CameraView 
-            onScoreUpdate={setCurrentScore}
-            isActive={isSessionActive}
-            onCameraError={setHasCameraError}
-          />
+          {isCameraEnabled ? (
+            <CameraView 
+              onScoreUpdate={setCurrentScore}
+              isActive={isSessionActive}
+              onCameraError={setHasCameraError}
+            />
+          ) : (
+            <div className="relative h-64 md:h-80 bg-gray-100 border-2 border-dashed border-gray-300 rounded-3xl flex flex-col items-center justify-center text-gray-500">
+              <svg className="w-12 h-12 mb-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 13l4 4m0 0l-4 4m4-4H9m4-14l-4 4m0 0l4 4m-4-4h10" />
+              </svg>
+              <p className="text-sm font-medium">カメラは現在OFFです</p>
+              <p className="text-xs text-gray-400 mt-1">「カメラをONにする」ボタンで再開できます</p>
+            </div>
+          )}
           
           {!hasCameraError && (
             <div className="mt-6 space-y-4">
@@ -454,6 +465,21 @@ function App() {
                   </div>
                 </div>
               </div>
+
+              <button
+                onClick={() => {
+                  setIsCameraEnabled(prev => {
+                    const next = !prev
+                    if (next) {
+                      setHasCameraError(false)
+                    }
+                    return next
+                  })
+                }}
+                className="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 text-sm text-gray-600 font-medium rounded-lg border border-gray-200 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-orange-300 focus:ring-offset-1"
+              >
+                {isCameraEnabled ? '📷 カメラをOFFにする' : '📷 カメラをONにする'}
+              </button>
             </div>
           )}
         </div>
