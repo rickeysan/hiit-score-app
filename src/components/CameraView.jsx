@@ -1,8 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
 import * as tf from '@tensorflow/tfjs';
 import * as poseDetection from '@tensorflow-models/pose-detection';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function CameraView({ onScoreUpdate, isActive, onCameraError }) {
+  const { t } = useLanguage();
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -66,7 +68,7 @@ export default function CameraView({ onScoreUpdate, isActive, onCameraError }) {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           console.error('❌ カメラAPIが利用できません');
           if (isMountedRef.current) {
-            setError('お使いのブラウザはカメラに対応していません。Chrome、Firefox、Safariなどの最新ブラウザをお使いください。');
+            setError(t('cameraNotSupported'));
           }
           return null;
         }
@@ -121,18 +123,18 @@ export default function CameraView({ onScoreUpdate, isActive, onCameraError }) {
         
         // エラーの種類に応じたメッセージ
         if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          setError('カメラへのアクセスが拒否されました。ブラウザのアドレスバーのカメラアイコンをクリックして許可してください。');
+          setError(t('cameraPermissionDenied'));
         } else if (err.name === 'NotFoundError') {
-          setError('カメラが見つかりませんでした。カメラが接続されているか確認してください。');
+          setError(t('cameraNotFound'));
         } else if (err.name === 'NotReadableError') {
-          setError('カメラが他のアプリケーションで使用中です。他のアプリを閉じてからもう一度お試しください。');
+          setError(t('cameraInUse'));
         } else if (err.name === 'AbortError') {
           // AbortErrorは開発時のホットリロードで頻繁に発生するため無視
           console.warn('⚠️ カメラ初期化が中断されました（開発モードでは正常）');
         } else {
           // play()エラーは無視（コンポーネントのアンマウント時によく発生）
           if (!err.message.includes('play()') && !err.message.includes('interrupted')) {
-            setError(`カメラエラー: ${err.message}。ページを再読み込みしてください。`);
+            setError(`${t('cameraError')}: ${err.message}. ${t('reloadPage')}`);
           } else {
             console.warn('⚠️ ビデオ再生が中断されました（開発モードでは正常）');
           }
@@ -316,7 +318,7 @@ export default function CameraView({ onScoreUpdate, isActive, onCameraError }) {
       } catch (err) {
         console.error('❌ TensorFlow.jsの初期化に失敗しました:', err);
         if (isMountedRef.current) {
-          setError('AIモデルの読み込みに失敗しました。ページを再読み込みしてください。');
+          setError(`AIモデルの読み込みに失敗しました。${t('reloadPage')}`);
         }
       }
     };
@@ -385,13 +387,13 @@ export default function CameraView({ onScoreUpdate, isActive, onCameraError }) {
                   </svg>
                 </div>
                 
-                <h3 className="camera-off-title">カメラがOFFになっています</h3>
-                <p className="camera-off-message">カメラへのアクセスが必要です</p>
+                <h3 className="camera-off-title">{t('cameraOff')}</h3>
+                <p className="camera-off-message">{t('cameraAccessRequired')}</p>
                 
                 <div className="privacy-notice">
-                  <p className="privacy-title">🔒 プライバシー保護について</p>
+                  <p className="privacy-title">{t('privacyProtectionTitle')}</p>
                   <p className="privacy-text">
-                    映像はあなたのPC内だけで処理されます。録画もされず、インターネット上に送信されることもありません。安心してご利用ください。
+                    {t('privacyProtectionText')}
                   </p>
                 </div>
                 
@@ -399,7 +401,7 @@ export default function CameraView({ onScoreUpdate, isActive, onCameraError }) {
                   className="camera-help-btn"
                   onClick={() => setShowModal(true)}
                 >
-                  📋 カメラをONにするには
+                  {t('howToEnableCamera')}
                 </button>
               </div>
             </div>
@@ -423,19 +425,19 @@ export default function CameraView({ onScoreUpdate, isActive, onCameraError }) {
         
         <div className="camera-status focus-mode-target">
           {!isInitialized ? (
-            <p>カメラを初期化中...</p>
+            <p>{t('initializingCamera')}</p>
           ) : !isActive ? (
             <>
-              <p>セッション開始ボタンを押して運動を開始してください</p>
+              <p>{t('sessionStartPrompt')}</p>
               <div className="privacy-notice-camera-on">
-                <p className="privacy-title">🔒 プライバシー保護について</p>
+                <p className="privacy-title">{t('privacyProtectionTitle')}</p>
                 <p className="privacy-text">
-                  映像はあなたのPC内だけで処理されます。録画もされず、インターネット上に送信されることもありません。安心してご利用ください。
+                  {t('privacyProtectionText')}
                 </p>
               </div>
             </>
           ) : (
-            <p>🎯 運動を検出中...</p>
+            <p>{t('detectingMovement')}</p>
           )}
         </div>
       </div>
@@ -445,7 +447,7 @@ export default function CameraView({ onScoreUpdate, isActive, onCameraError }) {
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>📋 カメラをONにする方法</h3>
+              <h3>{t('howToEnableCameraTitle')}</h3>
               <button className="modal-close" onClick={() => setShowModal(false)}>
                 ✕
               </button>
@@ -453,25 +455,24 @@ export default function CameraView({ onScoreUpdate, isActive, onCameraError }) {
             
             <div className="modal-body">
               <div className="privacy-notice-modal">
-                <p className="privacy-title-modal">🔒 あなたのプライバシーを守ります</p>
+                <p className="privacy-title-modal">{t('privacyProtectionModalTitle')}</p>
                 <p className="privacy-text-modal">
-                  カメラ映像はブラウザ内でリアルタイム処理され、録画や保存は一切行いません。
-                  すべての処理がお使いのデバイス内で完結するため、第三者にデータが送信されることはありません。
+                  {t('privacyProtectionModalText')}
                 </p>
               </div>
               
               <div className="error-instructions">
-                <h4>基本的な解決手順：</h4>
+                <h4>{t('basicTroubleshooting')}</h4>
                 <ol>
-                  <li>ブラウザのアドレスバー左側にある<strong>🔒 鍵アイコン</strong>または<strong>🎥 カメラアイコン</strong>をクリック</li>
-                  <li>「カメラ」の設定を<strong>「許可」</strong>に変更</li>
-                  <li>下のボタンをクリックしてページを再読み込み</li>
+                  <li>{t('troubleshootingStep1')}</li>
+                  <li>{t('troubleshootingStep2')}</li>
+                  <li>{t('troubleshootingStep3')}</li>
                 </ol>
                 
                 <div className="browser-help">
-                  <p><strong>それでも解決しない場合：</strong></p>
+                  <p><strong>{t('stillNotWorking')}</strong></p>
                   <ul>
-                    <li>他のアプリがカメラを使用していないか確認</li>
+                    <li>{t('checkOtherApps')}</li>
                   </ul>
                 </div>
               </div>
@@ -480,7 +481,7 @@ export default function CameraView({ onScoreUpdate, isActive, onCameraError }) {
                 className="error-reload-btn"
                 onClick={() => window.location.reload()}
               >
-                🔄 ページを再読み込み
+                {t('reloadButton')}
               </button>
             </div>
           </div>
