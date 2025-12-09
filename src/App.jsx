@@ -5,9 +5,12 @@ import Fireworks from './components/Fireworks'
 import WelcomeModal from './components/WelcomeModal'
 import BreathingModal from './components/BreathingModal'
 import { Analytics } from '@vercel/analytics/react'
-import { exercises } from './data/exercises'
+import { getExercises } from './data/exercises'
+import { useLanguage } from './i18n/LanguageContext'
 
 function App() {
+  const { language, changeLanguage, t } = useLanguage()
+  const exercises = getExercises(language)
 
   const [currentScore, setCurrentScore] = useState(0)
   const [displayScore, setDisplayScore] = useState(0)
@@ -62,6 +65,14 @@ function App() {
 
   // 現在選択中の体操
   const currentExercise = exercises[currentExerciseIndex]
+  
+  // 言語が変わったときに体操インデックスをリセット（必要に応じて）
+  useEffect(() => {
+    // 言語変更時に現在のエクササイズが存在することを確認
+    if (currentExerciseIndex >= exercises.length) {
+      setCurrentExerciseIndex(0)
+    }
+  }, [language, exercises.length, currentExerciseIndex])
 
   // マイルストーン（花火を表示するスコア）
   const milestones = [50, 100, 150, 200, 300, 500]
@@ -99,7 +110,7 @@ function App() {
     if (currentMilestone) {
       lastMilestoneRef.current = currentMilestone
       setShowFireworks(true)
-      console.log('🎉 マイルストーン達成!', currentMilestone)
+      console.log(t('milestoneAchieved'), currentMilestone)
     }
     
     // 2. 目標達成時のお祝いメッセージ
@@ -112,7 +123,7 @@ function App() {
         goalAchievedSoundRef.current.currentTime = 0
         goalAchievedSoundRef.current.volume = 0.7
         goalAchievedSoundRef.current.play().catch(err => {
-          console.log('❌ 目標達成効果音の再生エラー:', err)
+          console.log(t('goalAchievedSoundError'), err)
         })
       }
       
@@ -144,7 +155,7 @@ function App() {
     if (videoRef.current) {
       videoRef.current.currentTime = 0
       videoRef.current.play().catch(err => {
-        console.log('動画の再生エラー:', err)
+        console.log(t('videoPlayError'), err)
       })
       setIsVideoPaused(false)
     }
@@ -156,8 +167,8 @@ function App() {
       const newSession = {
         id: Date.now(),
         score: Math.floor(currentScore),
-        timestamp: new Date().toLocaleString('ja-JP'),
-        duration: '1分', // 実際のセッション時間を記録
+        timestamp: new Date().toLocaleString(language === 'ja' ? 'ja-JP' : 'en-US'),
+        duration: language === 'ja' ? '1分' : '1 min', // 実際のセッション時間を記録
         exerciseId: currentExercise.id,
         exerciseTitle: currentExercise.title
       }
@@ -165,7 +176,7 @@ function App() {
     }
     // 深呼吸モーダルを表示
     setShowBreathingModal(true)
-  }, [currentScore, currentExercise.id, currentExercise.title])
+  }, [currentScore, currentExercise.id, currentExercise.title, language])
 
   const handleFireworksComplete = useCallback(() => {
     setShowFireworks(false)
@@ -279,11 +290,19 @@ function App() {
       
       {/* 集中モード切り替えボタン（画面右上固定） */}
       <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+        {/* 言語切り替えボタン */}
+        <button
+          onClick={() => changeLanguage(language === 'ja' ? 'en' : 'ja')}
+          className="flex items-center gap-2 px-3 py-2 rounded-full shadow-lg font-semibold text-sm transition-all duration-300 bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-200"
+          title={language === 'ja' ? 'Switch to English' : '日本語に切り替え'}
+        >
+          <span>{language === 'ja' ? 'EN' : '日本語'}</span>
+        </button>
         <button
           onClick={() => setShowUsageModal(true)}
           className="flex items-center gap-2 px-4 py-2 rounded-full shadow-lg font-semibold text-sm transition-all duration-300 bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-200"
         >
-          <span>使い方</span>
+          <span>{t('howToUse')}</span>
         </button>
         <button
           onClick={() => setIsHeaderVisible(!isHeaderVisible)}
@@ -292,21 +311,21 @@ function App() {
               ? 'bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-200'
               : 'bg-gradient-to-r from-orange-400 to-amber-500 hover:from-orange-500 hover:to-amber-600 text-white border-2 border-orange-300'
           }`}
-          aria-label={isHeaderVisible ? '集中モードをオン' : '集中モードをオフ'}
+          aria-label={isHeaderVisible ? t('enableFocusMode') : t('disableFocusMode')}
         >
           {isHeaderVisible ? (
             <>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
-              <span>集中モード</span>
+              <span>{t('focusMode')}</span>
             </>
           ) : (
             <>
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29z" />
               </svg>
-              <span>集中モード ON</span>
+              <span>{t('focusModeOn')}</span>
             </>
           )}
         </button>
@@ -324,8 +343,8 @@ function App() {
               <div className="absolute -top-5 right-1 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[6px] border-b-gray-800"></div>
               <p className="leading-relaxed">
                 {isHeaderVisible 
-                  ? 'ヘッダーを非表示にして、トレーニングに集中できます。スコア表示や動画がより見やすくなります。'
-                  : 'ヘッダーを表示して、アプリの説明を確認できます。'
+                  ? t('helpTooltipVisible')
+                  : t('helpTooltipHidden')
                 }
               </p>
             </div>
@@ -347,10 +366,10 @@ function App() {
             className="w-16 h-16 md:w-20 md:h-20 object-contain"
             style={{ imageRendering: 'crisp-edges' }}
           />
-          <span className="bg-gradient-to-r from-orange-500 to-yellow-500 bg-clip-text text-transparent">すきまフィット</span>
+          <span className="bg-gradient-to-r from-orange-500 to-yellow-500 bg-clip-text text-transparent">{t('appName')}</span>
         </h1>
         <p className="text-lg md:text-xl text-gray-700">
-          カメラに向かって身体を動かして、作業のすきま時間にリフレッシュ！
+          {t('appDescription')}
         </p>
         </div>
       </header>
@@ -368,8 +387,8 @@ function App() {
               <svg className="w-12 h-12 mb-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 13l4 4m0 0l-4 4m4-4H9m4-14l-4 4m0 0l4 4m-4-4h10" />
               </svg>
-              <p className="text-sm font-medium">カメラは現在OFFです</p>
-              <p className="text-xs text-gray-400 mt-1">「カメラをONにする」ボタンで再開できます</p>
+              <p className="text-sm font-medium">{t('cameraCurrentlyOff')}</p>
+              <p className="text-xs text-gray-400 mt-1">{t('cameraCanResume')}</p>
             </div>
           )}
           
@@ -380,21 +399,21 @@ function App() {
                   className="w-full py-4 px-8 bg-gradient-to-r from-orange-400 to-yellow-400 hover:from-orange-500 hover:to-yellow-500 text-white font-bold text-lg rounded-full uppercase tracking-wider shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 hover:scale-105"
                   onClick={startSession}
                 >
-                  セッション開始
+                  {t('startSession')}
                 </button>
               ) : (
                 <button 
                   className="w-full py-4 px-8 bg-gradient-to-r from-red-400 to-pink-400 hover:from-red-500 hover:to-pink-500 text-white font-bold text-lg rounded-full uppercase tracking-wider shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 hover:scale-105"
                   onClick={endSession}
                 >
-                  セッション終了
+                  {t('endSession')}
                 </button>
               )}
               
               {/* BGMコントロール */}
               <div className="bg-gray-50 rounded-lg px-3 py-2 border border-gray-200">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-gray-500">🎵 BGM</span>
+                  <span className="text-xs text-gray-500">{t('bgm')}</span>
                   <button
                     onClick={toggleBgm}
                     className={`px-3 py-1 rounded text-xs font-medium transition-all duration-200 ${
@@ -403,7 +422,7 @@ function App() {
                         : 'bg-gray-200 hover:bg-gray-300 text-gray-600'
                     }`}
                   >
-                    {isBgmPlaying ? '⏸︎ 停止' : '▶︎ 再生'}
+                    {isBgmPlaying ? `⏸︎ ${t('pause')}` : `▶︎ ${t('play')}`}
                   </button>
                 </div>
                 
@@ -426,7 +445,7 @@ function App() {
               {/* 効果音ON/OFFコントロール */}
               <div className="bg-gray-50 rounded-lg px-3 py-2 border border-gray-200">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">🔔 効果音</span>
+                  <span className="text-xs text-gray-500">{t('soundEffects')}</span>
                   <div className="flex items-center gap-2">
                     {/* OFF表示 */}
                     <div className={`flex items-center gap-1 transition-opacity duration-200 ${
@@ -435,7 +454,7 @@ function App() {
                       <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
                       </svg>
-                      <span className="text-xs text-gray-400 font-medium">OFF</span>
+                      <span className="text-xs text-gray-400 font-medium">{t('off')}</span>
                     </div>
                     
                     {/* トグルスイッチ */}
@@ -444,7 +463,7 @@ function App() {
                       className={`relative w-10 h-5 rounded-full transition-colors duration-200 ${
                         isSoundEnabled ? 'bg-gray-400' : 'bg-gray-300'
                       }`}
-                      aria-label={isSoundEnabled ? '効果音をオフにする' : '効果音をオンにする'}
+                      aria-label={isSoundEnabled ? t('disableSound') : t('enableSound')}
                     >
                       <div
                         className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${
@@ -457,7 +476,7 @@ function App() {
                     <div className={`flex items-center gap-1 transition-opacity duration-200 ${
                       isSoundEnabled ? 'opacity-100' : 'opacity-40'
                     }`}>
-                      <span className="text-xs text-gray-600 font-medium">ON</span>
+                      <span className="text-xs text-gray-600 font-medium">{t('on')}</span>
                       <svg className="w-3 h-3 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
                       </svg>
@@ -478,7 +497,7 @@ function App() {
                 }}
                 className="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 text-sm text-gray-600 font-medium rounded-lg border border-gray-200 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-orange-300 focus:ring-offset-1"
               >
-                {isCameraEnabled ? '📷 カメラをOFFにする' : '📷 カメラをONにする'}
+                {isCameraEnabled ? t('cameraOff') : t('cameraOn')}
               </button>
             </div>
           )}
@@ -508,8 +527,8 @@ function App() {
                   {currentExercise.comingSoon ? (
                     <div className="relative rounded-xl overflow-hidden shadow-lg border-2 border-orange-200 bg-gray-100 flex items-center justify-center" style={{ minHeight: '400px' }}>
                       <div className="text-center">
-                        <div className="text-4xl font-bold text-gray-400 mb-2">Coming soon</div>
-                        <div className="text-lg text-gray-500">新しいコンテンツを準備中です</div>
+                        <div className="text-4xl font-bold text-gray-400 mb-2">{t('comingSoon')}</div>
+                        <div className="text-lg text-gray-500">{t('newContentComing')}</div>
                       </div>
                     </div>
                   ) : (
@@ -530,7 +549,7 @@ function App() {
                         <button
                           onClick={toggleVideo}
                           className="absolute top-2 right-2 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-all duration-200"
-                          aria-label={isVideoPaused ? '再生' : '一時停止'}
+                          aria-label={isVideoPaused ? t('playVideo') : t('pauseVideo')}
                         >
                           {isVideoPaused ? (
                             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -548,7 +567,7 @@ function App() {
                         onClick={() => setShowModal(true)}
                         className="w-full mt-4 py-2 px-4 bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5"
                       >
-                        📖 詳細を確認する
+                        {t('viewDetails')}
                       </button>
                     </>
                   )}
@@ -560,7 +579,7 @@ function App() {
                 <button
                   onClick={handlePreviousExercise}
                   className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-gradient-to-r from-orange-400 to-yellow-400 hover:from-orange-500 hover:to-yellow-500 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110"
-                  aria-label="前の体操"
+                  aria-label={language === 'ja' ? '前の体操' : 'Previous exercise'}
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -585,7 +604,7 @@ function App() {
                 <button
                   onClick={handleNextExercise}
                   className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-gradient-to-r from-orange-400 to-yellow-400 hover:from-orange-500 hover:to-yellow-500 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110"
-                  aria-label="次の体操"
+                  aria-label={language === 'ja' ? '次の体操' : 'Next exercise'}
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -594,7 +613,7 @@ function App() {
               </div>
             </div>
             
-            <h2 className="text-2xl font-bold mb-6 text-gray-800">現在のスコア</h2>
+            <h2 className="text-2xl font-bold mb-6 text-gray-800">{t('currentScore')}</h2>
 
             {/* 円形プログレスバー */}
             <div className="relative w-[200px] h-[200px] mb-6">
@@ -641,7 +660,7 @@ function App() {
             {isSessionActive && (
               <div className="flex items-center justify-center gap-2 bg-orange-100 py-2 px-4 rounded-full">
                 <span className="w-3 h-3 bg-orange-500 rounded-full pulse-dot"></span>
-                <span className="font-semibold text-orange-600">セッション中</span>
+                <span className="font-semibold text-orange-600">{t('sessionActive')}</span>
               </div>
             )}
           </div>
@@ -665,7 +684,7 @@ function App() {
         <div className="fixed top-8 left-1/2 transform -translate-x-1/2 z-[10000] pointer-events-none animate-fade-in">
           <div className="bg-white/80 backdrop-blur-md px-8 py-4 rounded-2xl shadow-lg border border-orange-200">
             <div className="text-2xl md:text-3xl font-semibold text-center text-orange-500">
-              お疲れ様でした
+              {t('congratulations')}
             </div>
           </div>
         </div>
@@ -684,10 +703,11 @@ function App() {
             {/* モーダルヘッダー */}
             <div className="sticky top-0 bg-gradient-to-r from-orange-400 to-yellow-400 text-white p-6 rounded-t-2xl">
               <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold">{currentExercise.title}の詳細</h2>
+                <h2 className="text-2xl font-bold">{currentExercise.title} {t('exerciseDetails')}</h2>
                 <button
                   onClick={() => setShowModal(false)}
                   className="text-white hover:text-gray-200 text-3xl font-bold transition-colors"
+                  aria-label={t('close')}
                 >
                   ×
                 </button>
@@ -711,7 +731,7 @@ function App() {
                 <button
                   onClick={toggleModalVideo}
                   className="absolute top-2 right-2 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-all duration-200"
-                  aria-label={isModalVideoPaused ? '再生' : '一時停止'}
+                  aria-label={isModalVideoPaused ? t('playVideo') : t('pauseVideo')}
                 >
                   {isModalVideoPaused ? (
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -729,7 +749,7 @@ function App() {
               <div className="space-y-4">
                 <div className="bg-orange-50 rounded-lg p-4">
                   <h3 className="text-xl font-bold text-orange-600 mb-2 flex items-center gap-2">
-                    🎯 効果
+                    {t('effects')}
                   </h3>
                   <ul className="space-y-2 text-gray-700">
                     {currentExercise.effects.map((effect, index) => (
@@ -743,7 +763,7 @@ function App() {
 
                 <div className="bg-blue-50 rounded-lg p-4">
                   <h3 className="text-xl font-bold text-blue-600 mb-2 flex items-center gap-2">
-                    📝 やり方
+                    {t('howTo')}
                   </h3>
                   <ol className="space-y-3 text-gray-700">
                     {currentExercise.steps.map((step, index) => (
@@ -757,7 +777,7 @@ function App() {
 
                 <div className="bg-yellow-50 rounded-lg p-4">
                   <h3 className="text-xl font-bold text-yellow-600 mb-2 flex items-center gap-2">
-                    ⚠️ ポイント
+                    {t('points')}
                   </h3>
                   <ul className="space-y-2 text-gray-700">
                     {currentExercise.points.map((point, index) => (
@@ -771,7 +791,7 @@ function App() {
 
                 <div className="bg-green-50 rounded-lg p-4">
                   <h3 className="text-xl font-bold text-green-600 mb-2 flex items-center gap-2">
-                    💡 おすすめタイミング
+                    {t('recommendedTiming')}
                   </h3>
                   <ul className="space-y-2 text-gray-700">
                     {currentExercise.timing.map((time, index) => (
@@ -789,7 +809,7 @@ function App() {
                 onClick={() => setShowModal(false)}
                 className="w-full py-3 px-6 bg-gradient-to-r from-orange-400 to-yellow-400 hover:from-orange-500 hover:to-yellow-500 text-white font-bold text-lg rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
               >
-                閉じる
+                {t('close')}
               </button>
             </div>
           </div>
@@ -809,10 +829,11 @@ function App() {
             {/* モーダルヘッダー */}
             <div className="sticky top-0 bg-gradient-to-r from-orange-400 to-yellow-400 text-white p-6 rounded-t-2xl">
               <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold">アプリの使い方</h2>
+                <h2 className="text-2xl font-bold">{t('usageModalTitle')}</h2>
                 <button
                   onClick={() => setShowUsageModal(false)}
                   className="text-white hover:text-gray-200 text-3xl font-bold transition-colors"
+                  aria-label={t('close')}
                 >
                   ×
                 </button>
@@ -824,19 +845,19 @@ function App() {
               <div className="space-y-4">
                 <div className="bg-orange-50 rounded-lg p-6 border-2 border-orange-200">
                   <h3 className="text-xl font-bold text-orange-600 mb-4 flex items-center gap-2">
-                    📸 1. カメラをオンにする
+                    📸 {t('usageStep1')}
                   </h3>
                   <p className="text-gray-700 leading-relaxed">
-                    ブラウザでカメラのアクセス許可を求められたら、「許可」を選択してください。カメラが起動すると、リアルタイムで身体の動きを検出します。
+                    {t('usageStep1Desc')}
                   </p>
                 </div>
 
                 <div className="bg-blue-50 rounded-lg p-6 border-2 border-blue-200">
                   <h3 className="text-xl font-bold text-blue-600 mb-4 flex items-center gap-2">
-                    🏃 2. 体操をマネする
+                    🏃 {t('usageStep2')}
                   </h3>
                   <p className="text-gray-700 leading-relaxed">
-                    画面に表示されている動画を見ながら、同じ動きをマネしてください。カメラがあなたの動きを検出し、正しく動くとスコアが増加します。目標スコアを達成すると、お祝いメッセージが表示されます！
+                    {t('usageStep2Desc')}
                   </p>
                 </div>
               </div>
@@ -846,7 +867,7 @@ function App() {
                 onClick={() => setShowUsageModal(false)}
                 className="w-full py-3 px-6 bg-gradient-to-r from-orange-400 to-yellow-400 hover:from-orange-500 hover:to-yellow-500 text-white font-bold text-lg rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
               >
-                閉じる
+                {t('close')}
               </button>
             </div>
           </div>
@@ -870,7 +891,7 @@ function App() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
-            <span>お問い合わせ</span>
+            <span>{t('contact')}</span>
           </a>
         </div>
       </footer>

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
+import { useLanguage } from '../i18n/LanguageContext'
 
 export default function BreathingModal({ onClose }) {
+  const { t } = useLanguage()
   const [timeLeft, setTimeLeft] = useState(10)
   const progress = ((10 - timeLeft) / 10) * 100
 
@@ -33,15 +35,15 @@ export default function BreathingModal({ onClose }) {
         <div className="bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-400 text-white p-8 rounded-t-3xl">
           <div className="flex justify-between items-start">
             <div className="flex-1">
-              <h2 className="text-3xl font-bold mb-2">お疲れ様でした！</h2>
+              <h2 className="text-3xl font-bold mb-2">{t('goodWork')}</h2>
               <p className="text-white/90 text-lg">
-                仕上げにゆっくり深呼吸をしましょう
+                {t('deepBreathing')}
               </p>
             </div>
             <button
               onClick={onClose}
               className="text-white hover:text-gray-200 text-3xl font-bold transition-colors ml-4 flex-shrink-0"
-              aria-label="閉じる"
+              aria-label={t('close')}
             >
               ×
             </button>
@@ -54,7 +56,7 @@ export default function BreathingModal({ onClose }) {
           <div className="rounded-2xl overflow-hidden shadow-lg border-2 border-blue-200">
             <img 
               src="/image/26187966.jpg" 
-              alt="深呼吸のイメージ"
+              alt={t('breathingImage')}
               className="w-full h-auto"
             />
           </div>
@@ -62,9 +64,9 @@ export default function BreathingModal({ onClose }) {
           {/* プログレスバー */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600 font-medium">自動的に閉じます</span>
+              <span className="text-gray-600 font-medium">{t('autoClose')}</span>
               <span className="text-blue-600 font-bold tabular-nums">
-                {Math.ceil(timeLeft)}秒
+                {Math.ceil(timeLeft)}{t('seconds')}
               </span>
             </div>
             <div className="relative w-full h-3 bg-gray-200 rounded-full overflow-hidden">
@@ -81,7 +83,7 @@ export default function BreathingModal({ onClose }) {
             className="w-full py-4 px-8 bg-gradient-to-r from-blue-400 to-cyan-400 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-lg rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 hover:scale-105"
           >
             <span className="flex items-center justify-center gap-2">
-              <span>閉じる</span>
+              <span>{t('close')}</span>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
